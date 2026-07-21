@@ -5,6 +5,7 @@ import { Panels } from "./ui/Panels";
 import { Instruments } from "./ui/Instruments";
 import { MarkInput } from "./ui/MarkInput";
 import { ContractAddress } from "./ui/ContractAddress";
+import { FollowToggle } from "./ui/FollowToggle";
 
 export function App() {
   return (
@@ -16,6 +17,7 @@ export function App() {
       <PlanetLog />
       <MarkInput />
       <ContractAddress />
+      <FollowToggle />
     </>
   );
 }

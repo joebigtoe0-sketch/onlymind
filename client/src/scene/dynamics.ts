@@ -11,6 +11,7 @@ export const dyn = {
   // makes the core flare and contract (both in cosmos time, ms)
   doubtUntil: 0,
   snapBackAt: 0,
+  splitFlashAt: 0, // a piece just broke off the mind-light
   // ambient instruments (§3), server-fed targets + smoothed display values
   instrTarget: { certainty: 0.65, belief: 0.3, coherence: 1 },
   instr: { certainty: 0.65, belief: 0.3, coherence: 1 },

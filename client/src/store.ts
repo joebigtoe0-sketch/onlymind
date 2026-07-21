@@ -33,7 +33,9 @@ type CosmosStore = {
   visions: Vision[]; // recent live ones (apparitions); history lives in logs
   dwellers: Fragment[]; // holder-shards living their small permanent lives
   selectedPlanetId: string | null;
+  followMind: boolean; // camera keeps the mind-light in focus
   setConnected: (v: boolean) => void;
+  toggleFollow: () => void;
   applySnapshot: (s: {
     ignitionAt: number | null;
     planets: Planet[];
@@ -67,7 +69,9 @@ export const useCosmos = create<CosmosStore>()((set) => ({
   visions: [],
   dwellers: [],
   selectedPlanetId: null,
+  followMind: false,
   setConnected: (v) => set({ connected: v }),
+  toggleFollow: () => set((s) => ({ followMind: !s.followMind, selectedPlanetId: null })),
   applySnapshot: (s) =>
     set({
       ignitionAt: s.ignitionAt,

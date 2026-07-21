@@ -91,8 +91,9 @@ export function Planet({ seed }: { seed: PlanetData }) {
     // orbit around the core; closer thoughts circle faster
     g.position.copy(planetPosition(seed, now, _pos));
 
-    // birth: scale in with a slight overshoot over ~2.4 s
-    const x = Math.min(1, Math.max(0, age) / 2.4);
+    // birth: the split-flight lands first (~1.6 s), then the bloom
+    const bloomAge = age - 1.6;
+    const x = Math.min(1, Math.max(0, bloomAge) / 2.4);
     const xm = x - 1;
     const easedBack = 1 + 2.70158 * xm * xm * xm + 1.70158 * xm * xm;
     mesh.current!.scale.setScalar(Math.max(0.001, radius * easedBack));
@@ -113,7 +114,7 @@ export function Planet({ seed }: { seed: PlanetData }) {
     const u = material.uniforms;
     u.uTime.value = performance.now() / 1000;
     u.uCoreLight.value = coreLightIntensity(tIgn, dyn.mood);
-    u.uHot.value = (1.5 * Math.exp(-Math.max(0, age) * 0.7) + inhabited * 1.1) * (1 - dead);
+    u.uHot.value = (1.5 * Math.exp(-Math.max(0, bloomAge) * 0.7) + inhabited * 1.1) * (1 - dead);
     u.uEmissiveMul.value = (0.55 + 0.5 * Math.min(m, 2.5)) * (1 + inhabited * 0.5);
     u.uDead.value = dead;
 

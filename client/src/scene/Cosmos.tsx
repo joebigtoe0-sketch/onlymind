@@ -12,6 +12,7 @@ import { Fragments } from "./Fragments";
 import { Companion } from "./Companion";
 import { Marks } from "./Marks";
 import { Dwellers } from "./Dwellers";
+import { SplitFlights } from "./SplitFlights";
 import { Visions } from "./Visions";
 import { Thoughts } from "./Thoughts";
 import { CameraRig } from "./CameraRig";
@@ -43,6 +44,7 @@ export function Cosmos() {
       <Companion />
       <Marks />
       <Dwellers />
+      <SplitFlights />
       <Visions />
       <Thoughts />
       <CameraRig />

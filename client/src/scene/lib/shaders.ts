@@ -144,6 +144,66 @@ void main() {
 }
 `;
 
+// The energy ball: animated plasma wisps curling around a bright core —
+// used by the mind-light and (smaller, dimmer) the holder-shards.
+export const ENERGY_FRAG = /* glsl */ `
+uniform vec3 uColor;
+uniform float uTime;
+uniform float uSeed;
+uniform float uIntensity;
+
+varying vec3 vNormal;
+varying vec3 vWorldPos;
+varying vec3 vObjPos;
+
+float hash(vec3 p) {
+  p = fract(p * 0.3183099 + vec3(0.1, 0.2, 0.3));
+  p *= 17.0;
+  return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
+}
+
+float vnoise(vec3 p) {
+  vec3 i = floor(p);
+  vec3 f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  return mix(
+    mix(mix(hash(i), hash(i + vec3(1.0, 0.0, 0.0)), f.x),
+        mix(hash(i + vec3(0.0, 1.0, 0.0)), hash(i + vec3(1.0, 1.0, 0.0)), f.x), f.y),
+    mix(mix(hash(i + vec3(0.0, 0.0, 1.0)), hash(i + vec3(1.0, 0.0, 1.0)), f.x),
+        mix(hash(i + vec3(0.0, 1.0, 1.0)), hash(i + vec3(1.0, 1.0, 1.0)), f.x), f.y),
+    f.z);
+}
+
+float fbm(vec3 p) {
+  float a = 0.5;
+  float s = 0.0;
+  for (int i = 0; i < 3; i++) {
+    s += a * vnoise(p);
+    p *= 2.07;
+    a *= 0.5;
+  }
+  return s;
+}
+
+void main() {
+  vec3 N = normalize(vNormal);
+  vec3 V = normalize(cameraPosition - vWorldPos);
+  float fres = pow(1.0 - abs(dot(N, V)), 1.25);
+  vec3 p = normalize(vObjPos);
+
+  // rising, curling filaments: ridged noise, domain-warped, flowing upward
+  vec3 q = p * 2.6 + vec3(0.0, -uTime * 0.35, 0.0) + uSeed;
+  float n1 = fbm(q + fbm(q + uTime * 0.1) * 0.9);
+  float fil1 = smoothstep(0.22, 0.02, abs(n1 - 0.5));
+  vec3 r = p * 5.2 + vec3(uTime * 0.12, -uTime * 0.55, 0.0) + uSeed * 2.0;
+  float fil2 = smoothstep(0.15, 0.0, abs(fbm(r) - 0.55)) * 0.7;
+
+  float wisp = (fil1 + fil2) * (0.35 + 0.65 * fres);
+  vec3 col = uColor * wisp * uIntensity + uColor * fres * 0.25 * uIntensity;
+  gl_FragColor = vec4(col, min(1.0, wisp + fres * 0.2));
+}
+`;
+
 export const SHELL_VERT = /* glsl */ `
 varying vec3 vNormal;
 varying vec3 vWorldPos;

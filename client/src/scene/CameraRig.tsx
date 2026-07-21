@@ -5,6 +5,7 @@ import * as THREE from "three";
 import { useCosmos } from "../store";
 import { cosmosNow, introActive, sceneNow } from "../lib/time";
 import { planetPosition, radiusForMass } from "./lib/orbit";
+import { mindLightPos } from "./Focus";
 import { reportCameraInterest } from "../net/socket";
 
 // Free-fly spectator camera. After ignition it slowly pulls back to reveal
@@ -70,6 +71,12 @@ export function CameraRig() {
       const next = cur + (want - cur) * (1 - Math.exp(-dt * 1.6));
       _dir.copy(camera.position).sub(ctl.target).normalize().multiplyScalar(next);
       camera.position.copy(ctl.target).add(_dir);
+      return;
+    }
+
+    // auto-follow: the camera's focus rides the mind-light itself
+    if (useCosmos.getState().followMind && !introActive()) {
+      ctl.target.lerp(mindLightPos, 1 - Math.exp(-dt * 3));
       return;
     }
 

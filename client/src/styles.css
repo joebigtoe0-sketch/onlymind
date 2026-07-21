@@ -452,6 +452,52 @@ canvas {
   color: #a7adc6;
 }
 
+/* ---- auto follow (keep the mind in focus) ---- */
+
+.follow-box {
+  position: fixed;
+  top: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 52;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 14px;
+  background: rgba(5, 6, 11, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  backdrop-filter: blur(8px);
+  color: #8b91ac;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  cursor: pointer;
+  opacity: 0;
+  animation: wordmark-in 4s ease 18s forwards;
+}
+
+.follow-box:hover {
+  color: #dfe3f2;
+}
+
+.follow-box.active {
+  color: #ffe2b0;
+  border-color: rgba(255, 217, 160, 0.4);
+}
+
+.follow-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.follow-box.active .follow-dot {
+  background: #ffd9a0;
+  box-shadow: 0 0 8px rgba(255, 217, 160, 0.8);
+}
+
 /* ---- the inscription (contract address) ---- */
 
 .ca-box {
