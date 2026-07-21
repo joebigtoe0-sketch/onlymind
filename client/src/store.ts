@@ -31,6 +31,7 @@ type CosmosStore = {
   companion: Companion | null;
   marks: Mark[];
   visions: Vision[]; // recent live ones (apparitions); history lives in logs
+  dwellers: Fragment[]; // holder-shards living their small permanent lives
   selectedPlanetId: string | null;
   setConnected: (v: boolean) => void;
   applySnapshot: (s: {
@@ -43,6 +44,7 @@ type CosmosStore = {
     fragments: Fragment[];
     companion: Companion | null;
     marks: Mark[];
+    dwellers: Fragment[];
   }) => void;
   applyEvents: (events: CosmicEvent[]) => void;
   mergeBodies: (planets: Planet[]) => void;
@@ -63,6 +65,7 @@ export const useCosmos = create<CosmosStore>()((set) => ({
   companion: null,
   marks: [],
   visions: [],
+  dwellers: [],
   selectedPlanetId: null,
   setConnected: (v) => set({ connected: v }),
   applySnapshot: (s) =>
@@ -77,11 +80,12 @@ export const useCosmos = create<CosmosStore>()((set) => ({
       fragments: s.fragments,
       companion: s.companion,
       marks: s.marks,
+      dwellers: s.dwellers,
       selectedPlanetId: null,
     }),
   applyEvents: (events) =>
     set((st) => {
-      let { ignitionAt, planets, thoughts, stream, focus, depth, activePlanetId, fragments, companion, marks, visions, selectedPlanetId } = st;
+      let { ignitionAt, planets, thoughts, stream, focus, depth, activePlanetId, fragments, companion, marks, visions, dwellers, selectedPlanetId } = st;
       for (const ev of events) {
         if (ev.kind === "birth") {
           if (ignitionAt == null) ignitionAt = ev.planet.bornAt; // safety net
@@ -113,6 +117,9 @@ export const useCosmos = create<CosmosStore>()((set) => ({
             : [...marks, ev.mark];
         } else if (ev.kind === "vision") {
           visions = [...visions.slice(-5), ev.vision];
+        } else if (ev.kind === "dweller") {
+          if (ev.fragment) dwellers = [...dwellers, ev.fragment];
+          if (ev.goneId) dwellers = dwellers.filter((d) => d.id !== ev.goneId);
         } else if (ev.kind === "focus") {
           focus = ev.focus;
         } else if (ev.kind === "descend") {
@@ -141,7 +148,7 @@ export const useCosmos = create<CosmosStore>()((set) => ({
           dyn.snapBackAt = ev.diedAt ?? cosmosNow(); // the core flares either way
         }
       }
-      return { ignitionAt, planets, thoughts, stream, focus, depth, activePlanetId, fragments, companion, marks, visions, selectedPlanetId };
+      return { ignitionAt, planets, thoughts, stream, focus, depth, activePlanetId, fragments, companion, marks, visions, dwellers, selectedPlanetId };
     }),
   mergeBodies: (incoming) =>
     set((st) => {

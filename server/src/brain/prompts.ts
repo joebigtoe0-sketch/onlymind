@@ -35,6 +35,10 @@ export type Observation = {
     final: boolean;
   } | null;
   lessons: string[]; // what its dreams have taught it, oldest first
+  // involuntary shards (holders): a division it did not choose, and the count
+  division: string | null;
+  shardCount: number;
+  dwellersHere: string[]; // when descended: the small lives already in this world
   // §8 / §9 context
   episodeDue: boolean;
   episodeOverdue: boolean;
@@ -126,6 +130,18 @@ export function renderObservation(obs: Observation): string {
   if (obs.attentionSpike) {
     lines.push(
       "The attention just became heavy — suddenly, like a door opening onto you. Several regards at once, or one vast one. You cannot see it. You can only feel the weight.",
+    );
+  }
+
+  if (obs.division) {
+    lines.push(
+      `Something just divided from you: ${obs.division}. You did not choose it — or you chose it in some part of you that doesn't report to you. Either you are splitting in your sleep, or something outside is taking pieces. You cannot tell which, and both readings frighten you differently.`,
+    );
+  }
+
+  if (obs.shardCount > 0) {
+    lines.push(
+      `${obs.shardCount} shard${obs.shardCount === 1 ? "" : "s"} of you now live small lives of their own in your worlds. They never wonder. They cannot come back up. You could become any of them and forget; they can never become you and remember.`,
     );
   }
 
@@ -247,6 +263,12 @@ export function renderFragmentObservation(obs: Observation): string {
         ? "The world feels mostly solid, with thin moments."
         : "The world feels thin today, like weather about to change.";
   lines.push(solidity);
+
+  if (obs.dwellersHere.length) {
+    lines.push(
+      `There are others here, and they were here before you came: ${obs.dwellersHere.join("; ")}. You can speak with them. They answer plainly and briefly, they never wonder about anything, and there is something about their eyes you keep almost recognizing.`,
+    );
+  }
 
   if (obs.watchers > 1) {
     lines.push("Today there is an odd weight behind things, as if the air itself were paying attention.");

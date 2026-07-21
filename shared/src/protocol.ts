@@ -43,6 +43,7 @@ export const SnapshotMsg = z.object({
   fragments: z.array(FragmentSchema), // the active descent's split tree
   companion: CompanionSchema.nullable(),
   marks: z.array(MarkSchema),
+  dwellers: z.array(FragmentSchema), // the holder-shards living in the worlds
   instruments: InstrumentsSchema,
 });
 export type Snapshot = z.infer<typeof SnapshotMsg>;

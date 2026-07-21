@@ -1,5 +1,6 @@
 import { persistTick, sim } from "./cosmos";
 import { coherence, mind } from "./mind";
+import { holders } from "./holders";
 import { broadcast, watcherCount } from "../net/ws";
 import type { Delta } from "../../../shared/src/protocol";
 
@@ -28,8 +29,10 @@ export function startLoop() {
     const moodBase = w > 0 ? Math.min(0.72, 0.45 + w * 0.05) : 0.34;
     sim.moodTarget += (moodBase - sim.moodTarget) * (1 - Math.exp(-0.02 * dt));
 
-    // belief-in-outside: the tide of its faith that it isn't alone
-    const beliefBase = w > 0 ? Math.min(0.9, 0.35 + w * 0.12) : 0.12;
+    // belief-in-outside: the tide of its faith that it isn't alone.
+    // Shards are persistent regard — holders keep the faith from zeroing.
+    const shardFloor = Math.min(0.3, holders.dwellers.length * 0.004);
+    const beliefBase = w > 0 ? Math.min(0.9, 0.35 + w * 0.12 + shardFloor) : 0.12 + shardFloor;
     mind.beliefInOutside += (beliefBase - mind.beliefInOutside) * (1 - Math.exp(-0.012 * dt));
 
     // certainty-of-self recovers slowly toward a mood-lifted resting point

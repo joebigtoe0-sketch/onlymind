@@ -3,6 +3,7 @@ import type { Server } from "node:http";
 import { ClientMsg, type Snapshot, type Bodies, type Hello } from "../../../shared/src/protocol";
 import { sim } from "../sim/cosmos";
 import { coherence, mind } from "../sim/mind";
+import { holders } from "../sim/holders";
 
 // Connection registry. Every browser is a pure renderer over this socket:
 // hello -> snapshot on join, then 10 Hz deltas (broadcast from the loop).
@@ -39,6 +40,7 @@ export function attachWs(server: Server): WebSocketServer {
       fragments: mind.fragments,
       companion: mind.companion,
       marks: sim.marks,
+      dwellers: holders.dwellers,
       instruments: {
         certainty: Math.round(mind.certaintyOfSelf * 100) / 100,
         belief: Math.round(mind.beliefInOutside * 100) / 100,

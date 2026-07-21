@@ -38,6 +38,15 @@ function migrate(): void {
   if (!cols.includes("form")) {
     db.exec("ALTER TABLE planets ADD COLUMN form TEXT");
   }
+  const fcols = (db.prepare("PRAGMA table_info(fragments)").all() as Array<{ name: string }>).map(
+    (r) => r.name,
+  );
+  if (!fcols.includes("kind")) {
+    db.exec("ALTER TABLE fragments ADD COLUMN kind TEXT NOT NULL DEFAULT 'descent'");
+  }
+  if (!fcols.includes("gone_at")) {
+    db.exec("ALTER TABLE fragments ADD COLUMN gone_at INTEGER");
+  }
 }
 
 // full reset (§14): close and delete the archive; the process exits after
@@ -306,8 +315,8 @@ export function lastThoughtsAtDepth(depth: number, sinceAt: number, n: number): 
 
 export function insertFragment(f: Fragment): void {
   db.prepare(
-    "INSERT INTO fragments (id, planet_id, parent_id, depth, name, born_at) VALUES (?, ?, ?, ?, ?, ?)",
-  ).run(f.id, f.planetId, f.parentId, f.depth, f.name, f.bornAt);
+    "INSERT INTO fragments (id, planet_id, parent_id, depth, name, born_at, kind) VALUES (?, ?, ?, ?, ?, ?, ?)",
+  ).run(f.id, f.planetId, f.parentId, f.depth, f.name, f.bornAt, f.kind ?? "descent");
 }
 
 type FragmentRow = {
@@ -317,20 +326,35 @@ type FragmentRow = {
   depth: number;
   name: string | null;
   born_at: number;
+  kind: string;
 };
+
+const rowToFragment = (r: FragmentRow): Fragment => ({
+  id: r.id,
+  planetId: r.planet_id,
+  parentId: r.parent_id,
+  depth: r.depth,
+  name: r.name,
+  bornAt: r.born_at,
+  kind: r.kind === "dweller" ? "dweller" : "descent",
+});
 
 export function fragmentsForPlanet(planetId: string): Fragment[] {
   const rows = db
-    .prepare("SELECT * FROM fragments WHERE planet_id = ? ORDER BY born_at")
+    .prepare("SELECT * FROM fragments WHERE planet_id = ? AND kind = 'descent' ORDER BY born_at")
     .all(planetId) as FragmentRow[];
-  return rows.map((r) => ({
-    id: r.id,
-    planetId: r.planet_id,
-    parentId: r.parent_id,
-    depth: r.depth,
-    name: r.name,
-    bornAt: r.born_at,
-  }));
+  return rows.map(rowToFragment);
+}
+
+export function loadDwellers(): Fragment[] {
+  const rows = db
+    .prepare("SELECT * FROM fragments WHERE kind = 'dweller' AND gone_at IS NULL ORDER BY born_at")
+    .all() as FragmentRow[];
+  return rows.map(rowToFragment);
+}
+
+export function retireDweller(id: string, at: number): void {
+  db.prepare("UPDATE fragments SET gone_at = ? WHERE id = ?").run(at, id);
 }
 
 export function maxFragmentOrdinal(): number {

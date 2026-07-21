@@ -2,7 +2,8 @@ import { Router } from "express";
 import { leaveMark, planetLog, sim, thoughtCount, warmMood, coolMood } from "../sim/cosmos";
 import { episode } from "../sim/experiments";
 import { mind } from "../sim/mind";
-import { fragmentsForPlanet, getElegy, kvSet, listTransmissions, visionsForPlanet } from "../db/store";
+import { fragmentsForPlanet, getElegy, kvGet, kvSet, listTransmissions, visionsForPlanet } from "../db/store";
+import { holders } from "../sim/holders";
 import { brainStatus } from "../brain/scheduler";
 import { queueTransmission } from "../voice/transmissions";
 import type { PlanetLog } from "../../../shared/src/protocol";
@@ -26,6 +27,8 @@ restRouter.get("/health", (_req, res) => {
     marks: sim.marks.length,
     marksFound: sim.marks.filter((m) => m.foundAt != null).length,
     ca: INSCRIPTION,
+    holders: Number(kvGet("holders") ?? 0),
+    dwellers: holders.dwellers.length,
     episode: episode.current,
     companion: mind.companion?.name ?? null,
     brain: brainStatus(),
@@ -132,6 +135,21 @@ adminRouter.post("/spike", (_req, res) => {
   sim.attentionSpikePending = true;
   warmMood(0.2);
   res.json({ ok: true });
+});
+
+// holders → involuntary shards. The chain watcher calls this same seam later.
+adminRouter.post("/holders", async (req, res) => {
+  const { addHolders, removeHolder, holderCount, holders } = await import("../sim/holders");
+  const add = Number(req.body?.add ?? 0);
+  if (add > 0) {
+    const made = addHolders(Math.min(50, add));
+    res.json({ ok: true, ...made, holders: holderCount(), dwellers: holders.dwellers.length });
+  } else if (add < 0) {
+    removeHolder();
+    res.json({ ok: true, holders: holderCount(), dwellers: holders.dwellers.length });
+  } else {
+    res.status(400).json({ error: "add must be nonzero" });
+  }
 });
 
 adminRouter.post("/transmit", (req, res) => {

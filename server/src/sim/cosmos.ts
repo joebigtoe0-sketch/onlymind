@@ -163,7 +163,7 @@ export function think(
   planetId: string | null = null,
   depth = 0,
   fragmentId: string | null = null,
-  voice?: "self" | "other",
+  voice?: "self" | "other" | "shard",
 ) {
   const t: Thought = {
     id: `t${thoughtSerial++}`,

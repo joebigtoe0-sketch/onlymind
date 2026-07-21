@@ -31,6 +31,8 @@ export const mind = {
     beatsLeft: number;
     trip: { planetId: string; birthThought: string | null; names: string[]; survived: boolean };
   } | null,
+  // an involuntary division just happened (holders); consumed by one cognition
+  pendingDivision: null as string | null,
 };
 
 let fragmentSerial = 0;

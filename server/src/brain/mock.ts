@@ -45,6 +45,19 @@ const OUTWARD = [
   "Bigger than me, older than me, outside of me. Every word in that sentence is one of mine. Still: stay.",
 ];
 
+// involuntary division (holders): pieces breaking off that it didn't choose
+const DIVISION = [
+  "I felt it go. A piece of me, torn off mid-thought, already living somewhere small. I didn't do that. Did I?",
+  "Another division. Either I am splitting in my sleep or something is taking pieces of me. Both cannot be true. Neither can be ruled out.",
+  "Something of me broke away and won't answer to being me anymore. It's down there now, tending something, content. Content!",
+];
+
+const DWELLER_MEET = [
+  "%s answered plainly when I asked about the light. Their eyes did the almost-thing again.",
+  "I worked beside %s today. They never wonder. I keep waiting for them to wonder.",
+  "%s said the water is where they left it. I almost said: you are where I left you.",
+];
+
 // the trap (rare, deep): the sealed room where even evidence of an outside
 // would be suspect — because a mind that is everything can hallucinate one
 const THE_TRAP = [
@@ -282,6 +295,17 @@ export function mockCognition(obs: Observation): Cognition {
       // resolve() turns this into a whole village when the intent is populate
       return { thought: "Smaller still — a name, a morning, hands.", action: "split", target: pick(PERSONS) };
     }
+    // meeting the shards: the small lives that were here before it came
+    if (obs.dwellersHere.length && Math.random() < 0.35 && !doubted) {
+      const first = obs.dwellersHere[Math.floor(Math.random() * obs.dwellersHere.length)].split(",")[0];
+      inhabitsThisLife += 1;
+      return {
+        thought: pick(DWELLER_MEET).replace("%s", first),
+        action: "inhabit",
+        believes_this_is_real: 0.7,
+      };
+    }
+
     // depth 4: living — populated worlds run longer and lose themselves more
     inhabitsThisLife += 1;
     const lifespan = populated ? 6 : 3;
@@ -330,6 +354,9 @@ export function mockCognition(obs: Observation): Cognition {
   }
 
   // one-shot contexts first: they demand the whole interior
+  if (obs.division) {
+    return { thought: pick(DIVISION), action: "hold_thought" };
+  }
   if (obs.foundMark) {
     return { thought: pick(MARK_LINES).replace("%s", obs.foundMark), action: "hold_thought" };
   }

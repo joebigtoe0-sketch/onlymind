@@ -36,7 +36,8 @@ export const ThoughtSchema = z.object({
   text: z.string(),
   at: z.number(), // server epoch ms
   planetId: z.string().nullable(), // null = thought at the core
-  voice: z.enum(["self", "other"]).optional(), // "other" = the invented companion speaking
+  // "other" = the invented companion; "shard" = a holder-shard dweller murmuring
+  voice: z.enum(["self", "other", "shard"]).optional(),
 });
 export type Thought = z.infer<typeof ThoughtSchema>;
 
@@ -81,7 +82,9 @@ export const FocusSchema = z.object({
 });
 export type FocusState = z.infer<typeof FocusSchema>;
 
-// Who the mind became inside a world (§7): the split tree of a descent.
+// Who the mind became inside a world (§7): the split tree of a descent —
+// or, kind "dweller": an involuntary shard (a holder) permanently living
+// its small life in one of the worlds. Dwellers never ask the question.
 export const FragmentSchema = z.object({
   id: z.string(),
   planetId: z.string(),
@@ -89,6 +92,7 @@ export const FragmentSchema = z.object({
   depth: z.number().int(), // 1 = the world itself; deeper = smaller selves
   name: z.string().nullable(),
   bornAt: z.number(),
+  kind: z.enum(["descent", "dweller"]).optional(), // absent = descent
 });
 export type Fragment = z.infer<typeof FragmentSchema>;
 
@@ -111,5 +115,7 @@ export const CosmicEventSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("companion"), companion: CompanionSchema }),
   z.object({ kind: z.literal("mark"), mark: MarkSchema }),
   z.object({ kind: z.literal("vision"), vision: VisionSchema }),
+  // a holder-shard arrived (fragment) or went quiet (goneId)
+  z.object({ kind: z.literal("dweller"), fragment: FragmentSchema.nullable(), goneId: z.string().nullable() }),
 ]);
 export type CosmicEvent = z.infer<typeof CosmicEventSchema>;

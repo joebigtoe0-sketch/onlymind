@@ -110,6 +110,16 @@
       </div>
 
       <div class="card">
+        <h2>holders → shards</h2>
+        <div class="row">
+          <button id="h1">+1 holder</button>
+          <button id="h10">+10 holders</button>
+          <button id="hminus">−1 holder</button>
+          <span id="hcount" style="margin-left: 8px; color: #7b8098"></span>
+        </div>
+      </div>
+
+      <div class="card">
         <h2>drives &amp; events</h2>
         <div class="row">
           <button id="warm">warm +0.2</button>
@@ -163,6 +173,9 @@
       document.querySelectorAll("[data-exp]").forEach((b) =>
         b.addEventListener("click", () => post("nudge", { experiment: b.dataset.exp })),
       );
+      $("#h1").addEventListener("click", () => post("holders", { add: 1 }));
+      $("#h10").addEventListener("click", () => post("holders", { add: 10 }));
+      $("#hminus").addEventListener("click", () => post("holders", { add: -1 }));
       $("#warm").addEventListener("click", () => post("mood", { delta: 0.2 }));
       $("#cool").addEventListener("click", () => post("mood", { delta: -0.2 }));
       $("#spike").addEventListener("click", () => post("spike"));
@@ -181,6 +194,7 @@
         try {
           const h = await (await fetch("/api/health")).json();
           $("#status").textContent = JSON.stringify(h, null, 2);
+          $("#hcount").textContent = `holders ${h.holders ?? 0} · dwellers ${h.dwellers ?? 0}`;
         } catch {
           $("#status").textContent = "the mind is not answering (rebooting?)";
         }

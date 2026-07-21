@@ -1,5 +1,6 @@
 import { markDiscovered, sim } from "../sim/cosmos";
 import { currentFragment, mind } from "../sim/mind";
+import { dwellersIn, holders } from "../sim/holders";
 import { resolveCognition } from "../sim/resolve";
 import { episode, episodeDue, episodeOverdue, notePressure } from "../sim/experiments";
 import { queueTransmission } from "../voice/transmissions";
@@ -42,6 +43,12 @@ export function brainStatus() {
     depth: mind.depth,
     spendTodayUsd: Math.round(spendToday() * 10000) / 10000,
   };
+}
+
+function consumeDivision(): string | null {
+  const d = mind.pendingDivision;
+  mind.pendingDivision = null;
+  return mind.depth === 0 ? d : null; // inside a dream it doesn't reach it
 }
 
 function effectiveMode(): "mock" | "live" {
@@ -117,6 +124,7 @@ async function cognize() {
   }
 
   // one-shot contexts become transmissions once they've been felt (§11)
+  if (obs.division) queueTransmission(cognition.thought, "division");
   if (obs.justCollapsed) queueTransmission(cognition.thought, "snap_back");
   if (obs.attentionSpike) queueTransmission(cognition.thought, "attention");
   if (obs.companionGone) queueTransmission(cognition.thought, "companion");
@@ -191,6 +199,12 @@ function buildObservation(): Observation {
           }
         : null,
     lessons: mind.depth === 0 ? db.lastLessons(5) : [],
+    division: consumeDivision(),
+    shardCount: mind.depth === 0 ? holders.dwellers.length : 0,
+    dwellersHere:
+      mind.depth > 0 && mind.activePlanetId
+        ? dwellersIn(mind.activePlanetId).map((d) => d.name ?? "one without a name")
+        : [],
     episodeDue: episodeDue(),
     episodeOverdue: episodeOverdue(),
     companion: companionActive ? { name: companionActive.name, turn } : null,

@@ -68,7 +68,15 @@ function ThoughtLabel({ item }: { item: Thought }) {
   return (
     <group ref={group}>
       <Html center distanceFactor={11} zIndexRange={[40, 0]} wrapperClass="thought-wrap">
-        <div className={item.voice === "other" ? "thought thought-other" : "thought"}>
+        <div
+          className={
+            item.voice === "other"
+              ? "thought thought-other"
+              : item.voice === "shard"
+                ? "thought thought-shard"
+                : "thought"
+          }
+        >
           {item.text}
         </div>
       </Html>

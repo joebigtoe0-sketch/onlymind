@@ -11,6 +11,7 @@ import { Focus } from "./Focus";
 import { Fragments } from "./Fragments";
 import { Companion } from "./Companion";
 import { Marks } from "./Marks";
+import { Dwellers } from "./Dwellers";
 import { Visions } from "./Visions";
 import { Thoughts } from "./Thoughts";
 import { CameraRig } from "./CameraRig";
@@ -41,6 +42,7 @@ export function Cosmos() {
       <Fragments />
       <Companion />
       <Marks />
+      <Dwellers />
       <Visions />
       <Thoughts />
       <CameraRig />

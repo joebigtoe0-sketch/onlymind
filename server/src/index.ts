@@ -11,6 +11,7 @@ const { restRouter } = await import("./net/rest");
 const { attachWs } = await import("./net/ws");
 const { restoreOrCreate, sim } = await import("./sim/cosmos");
 const { restoreMind } = await import("./sim/mind");
+const { restoreHolders, startDwellerMurmur } = await import("./sim/holders");
 const { startLoop } = await import("./sim/loop");
 const { startOpening } = await import("./sim/driver");
 const { startScheduler } = await import("./brain/scheduler");
@@ -54,6 +55,7 @@ attachWs(server);
 
 const fresh = restoreOrCreate();
 restoreMind();
+restoreHolders();
 console.log(
   fresh
     ? `[onlymind] a new mind — seed ${sim.seed}`
@@ -67,4 +69,5 @@ server.listen(port, () => {
   const handoverMs = startOpening(fresh);
   startScheduler(handoverMs);
   startAmbientDrip();
+  startDwellerMurmur();
 });
