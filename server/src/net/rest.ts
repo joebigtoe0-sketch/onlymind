@@ -6,6 +6,7 @@ import { fragmentsForPlanet, getElegy, kvGet, kvSet, listTransmissions, visionsF
 import { holders } from "../sim/holders";
 import { brainStatus } from "../brain/scheduler";
 import { queueTransmission } from "../voice/transmissions";
+import { visionStatus } from "../voice/visions";
 import type { PlanetLog } from "../../../shared/src/protocol";
 
 export const restRouter = Router();
@@ -32,6 +33,7 @@ restRouter.get("/health", (_req, res) => {
     episode: episode.current,
     companion: mind.companion?.name ?? null,
     brain: brainStatus(),
+    visions: visionStatus(),
     uptimeSec: Math.round((Date.now() - bootAt) / 1000),
   });
 });
@@ -74,6 +76,12 @@ restRouter.get("/atlas", (_req, res) => {
 // The outward voice queue (§11).
 restRouter.get("/transmissions", (_req, res) => {
   res.json({ transmissions: listTransmissions(50) });
+});
+
+// What it would have posted (§11) — the composed tweets, never sent.
+restRouter.get("/tweets", async (_req, res) => {
+  const { listTweets } = await import("../db/store");
+  res.json({ tweets: listTweets(50) });
 });
 
 // A mark (§9): one word, left in the dark. Scarce by design — one per
@@ -160,6 +168,16 @@ adminRouter.post("/transmit", (req, res) => {
   }
   queueTransmission(text, "manual");
   res.json({ ok: true });
+});
+
+adminRouter.post("/tweet", async (_req, res) => {
+  const { composeTweetNow } = await import("../voice/tweets");
+  const t = composeTweetNow();
+  if (!t) {
+    res.status(400).json({ error: "nothing waiting to be said" });
+    return;
+  }
+  res.json({ ok: true, ...t });
 });
 
 adminRouter.post("/snapback", (_req, res) => {

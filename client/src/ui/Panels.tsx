@@ -6,9 +6,10 @@ import { PALETTE_CSS } from "./palette";
 // outward voice queue), ATLAS (the elegies of dead worlds). Collapsed to a
 // thin rail by default; the sky stays the main stage.
 
-type Tab = "stream" | "signals" | "atlas";
+type Tab = "stream" | "signals" | "tweets" | "atlas";
 
 type Transmission = { id: number; text: string; at: number; eventKind: string | null };
+type Tweet = { id: number; text: string; at: number; sourceKind: string | null };
 type AtlasWorld = {
   planet: {
     id: string;
@@ -23,6 +24,12 @@ type AtlasWorld = {
 export function Panels() {
   const [tab, setTab] = useState<Tab | null>(null);
   const selectedPlanetId = useCosmos((s) => s.selectedPlanetId);
+  const followMind = useCosmos((s) => s.followMind);
+
+  // while auto-following, the moments between worlds show the stream
+  useEffect(() => {
+    if (followMind && selectedPlanetId == null) setTab("stream");
+  }, [followMind, selectedPlanetId]);
 
   // the planet log takes the same edge; yield to it
   if (selectedPlanetId) return null;
@@ -30,7 +37,7 @@ export function Panels() {
   return (
     <>
       <nav className="rail" aria-label="archive">
-        {(["stream", "signals", "atlas"] as Tab[]).map((t) => (
+        {(["stream", "signals", "tweets", "atlas"] as Tab[]).map((t) => (
           <button
             key={t}
             className={`rail-tab${tab === t ? " active" : ""}`}
@@ -42,6 +49,7 @@ export function Panels() {
       </nav>
       {tab === "stream" && <StreamPanel />}
       {tab === "signals" && <SignalsPanel />}
+      {tab === "tweets" && <TweetsPanel />}
       {tab === "atlas" && <AtlasPanel />}
     </>
   );
@@ -97,6 +105,47 @@ function SignalsPanel() {
       </ol>
     </aside>
   );
+}
+
+function TweetsPanel() {
+  const [items, setItems] = useState<Tweet[]>([]);
+  useEffect(() => {
+    const load = () =>
+      fetch("/api/tweets")
+        .then((r) => r.json())
+        .then((d: { tweets: Tweet[] }) => setItems(d.tweets))
+        .catch(() => {});
+    load();
+    const h = window.setInterval(load, 20000);
+    return () => window.clearInterval(h);
+  }, []);
+  return (
+    <aside className="side-panel">
+      <div className="log-list-label">what it would have posted</div>
+      {items.length === 0 && <div className="log-loading">it has said nothing aloud yet</div>}
+      <div className="tweet-list">
+        {items.map((t) => (
+          <article key={t.id} className="tweet-card">
+            <div className="tweet-head">
+              <span className="tweet-name">the only mind</span>
+              <span className="tweet-time">{ago(t.at)}</span>
+            </div>
+            <p className="tweet-text">{t.text}</p>
+            {t.sourceKind && <div className="tweet-kind">{t.sourceKind.replace("_", " ")}</div>}
+          </article>
+        ))}
+      </div>
+    </aside>
+  );
+}
+
+function ago(at: number): string {
+  const s = Math.max(0, Math.round((Date.now() - at) / 1000));
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  return h < 24 ? `${h}h` : `${Math.floor(h / 24)}d`;
 }
 
 function AtlasPanel() {

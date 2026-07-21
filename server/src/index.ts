@@ -16,6 +16,7 @@ const { startLoop } = await import("./sim/loop");
 const { startOpening } = await import("./sim/driver");
 const { startScheduler } = await import("./brain/scheduler");
 const { startAmbientDrip } = await import("./voice/transmissions");
+const { startTweetComposer } = await import("./voice/tweets");
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -70,4 +71,5 @@ server.listen(port, () => {
   startScheduler(handoverMs);
   startAmbientDrip();
   startDwellerMurmur();
+  startTweetComposer();
 });

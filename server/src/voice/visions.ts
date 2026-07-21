@@ -21,11 +21,23 @@ const QUALITY = process.env.IMAGE_QUALITY ?? "low";
 const DAILY_USD = Number(process.env.IMAGE_DAILY_USD ?? 2);
 const PRICE_EACH = Number(process.env.IMAGE_PRICE ?? 0.02);
 const ENABLED = (process.env.IMAGES ?? "on") !== "off";
-const COOLDOWN_MS = 4 * 60 * 1000;
+const COOLDOWN_MS = 90 * 1000; // low enough for 2-3 paintings per deep trip
 
 let lastAt = 0;
 let inFlight = false;
 let visionSerial = -1;
+let lastError: string | null = null;
+let lastSkip: string | null = null;
+
+export function visionStatus() {
+  return {
+    available: visionsAvailable(),
+    spendTodayUsd: Math.round(Number(kvGet(spendKey()) ?? 0) * 1000) / 1000,
+    lastPaintAgoSec: lastAt ? Math.round((Date.now() - lastAt) / 1000) : null,
+    lastError,
+    lastSkip,
+  };
+}
 
 function spendKey(): string {
   return `imgspend:${new Date().toISOString().slice(0, 10)}`;
@@ -48,15 +60,34 @@ const STYLE =
 
 // fire-and-forget; failures are silent (a vision that didn't come is nothing)
 export function maybePaintVision(planetId: string, text: string): void {
-  if (!visionsAvailable() || inFlight) return;
+  if (!visionsAvailable()) {
+    lastSkip = "disabled or no key";
+    return;
+  }
+  if (inFlight) {
+    lastSkip = "one already painting";
+    return;
+  }
   const now = Date.now();
-  if (now - lastAt < COOLDOWN_MS) return;
-  if (watcherCount() === 0) return; // no audience, no spend
-  if (Number(kvGet(spendKey()) ?? 0) >= DAILY_USD) return;
+  if (now - lastAt < COOLDOWN_MS) {
+    lastSkip = "cooldown";
+    return;
+  }
+  if (watcherCount() === 0) {
+    lastSkip = "no watchers";
+    return;
+  }
+  if (Number(kvGet(spendKey()) ?? 0) >= DAILY_USD) {
+    lastSkip = "daily budget spent";
+    return;
+  }
+  lastSkip = null;
   lastAt = now;
   inFlight = true;
   paint(planetId, text)
-    .catch(() => {})
+    .catch((e) => {
+      lastError = String(e).slice(0, 160);
+    })
     .finally(() => {
       inFlight = false;
     });
@@ -79,7 +110,9 @@ async function paint(planetId: string, text: string): Promise<void> {
       }),
     });
     if (!res.ok) {
-      console.warn(`[visions] http ${res.status}`);
+      const body = await res.text().catch(() => "");
+      lastError = `http ${res.status}: ${body.slice(0, 140)}`;
+      console.warn(`[visions] ${lastError}`);
       return;
     }
     const data = (await res.json()) as {
@@ -114,6 +147,7 @@ async function paint(planetId: string, text: string): Promise<void> {
     db.insertVision(vision);
     db.insertEvent("vision", vision.at, { id, planetId });
     sim.events.push({ kind: "vision", vision });
+    lastError = null;
     console.log(`[visions] painted ${id} for ${planetId}`);
   } finally {
     clearTimeout(timer);

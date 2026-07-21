@@ -225,19 +225,21 @@ ${NOISE_GLSL}
 void main() {
   vec3 N = normalize(vNormal);
   vec3 V = normalize(cameraPosition - vWorldPos);
-  float fres = pow(1.0 - abs(dot(N, V)), 1.6);
+  // sharp fresnel: the face of the veil is nearly transparent, only the
+  // silhouette edge carries light — gauze, not milk
+  float fres = pow(1.0 - abs(dot(N, V)), 2.3);
   vec3 p = normalize(vObjPos);
 
   // soft streaks of light flowing upward through the veil
   float streaks = fbm(p * 3.1 + vec3(0.0, -uTime * 0.7, 0.0) + uSeed);
-  float veil = 0.4 + 0.6 * smoothstep(0.3, 0.8, streaks);
+  float veil = 0.35 + 0.65 * smoothstep(0.3, 0.8, streaks);
   float top = smoothstep(-0.6, 0.9, p.y);
 
-  vec3 col = uColor * fres * veil * (0.8 + top * 0.5) * uIntensity;
-  col += uColor * pow(fres, 3.0) * 0.7 * uIntensity; // bright rim
-  col += vec3(1.0) * pow(fres, 6.0) * 0.35 * uIntensity; // white edge sparks
+  vec3 col = uColor * fres * veil * (1.1 + top * 0.4) * uIntensity;
+  col += uColor * pow(fres, 3.0) * 0.8 * uIntensity; // bright rim
+  col += vec3(1.0) * pow(fres, 6.0) * 0.2 * uIntensity; // faint white edge
 
-  float a = clamp(fres * veil * 1.25, 0.0, 1.0);
+  float a = clamp(fres * veil, 0.0, 1.0) * 0.7;
   gl_FragColor = vec4(col, a);
 }
 `;

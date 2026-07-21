@@ -107,6 +107,16 @@ CREATE TABLE IF NOT EXISTS visions (
 );
 CREATE INDEX IF NOT EXISTS idx_visions_planet ON visions(planet_id, at);
 
+-- composed tweets: what the outward voice WOULD have posted (§11). The real
+-- X integration later drains rows where posted = 0.
+CREATE TABLE IF NOT EXISTS tweets (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  text        TEXT NOT NULL,
+  at          INTEGER NOT NULL,
+  source_kind TEXT,
+  posted      INTEGER NOT NULL DEFAULT 0
+);
+
 -- every cosmic event fired
 CREATE TABLE IF NOT EXISTS events (
   id      INTEGER PRIMARY KEY AUTOINCREMENT,

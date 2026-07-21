@@ -47,6 +47,12 @@ function migrate(): void {
   if (!fcols.includes("gone_at")) {
     db.exec("ALTER TABLE fragments ADD COLUMN gone_at INTEGER");
   }
+  const trcols = (
+    db.prepare("PRAGMA table_info(transmissions)").all() as Array<{ name: string }>
+  ).map((r) => r.name);
+  if (!trcols.includes("tweeted")) {
+    db.exec("ALTER TABLE transmissions ADD COLUMN tweeted INTEGER NOT NULL DEFAULT 0");
+  }
 }
 
 // full reset (§14): close and delete the archive; the process exits after
@@ -167,6 +173,34 @@ export function listTransmissions(n: number): Array<{ id: number; text: string; 
     .prepare("SELECT id, text, at, event_kind FROM transmissions ORDER BY at DESC LIMIT ?")
     .all(n) as Array<{ id: number; text: string; at: number; event_kind: string | null }>;
   return rows.map((r) => ({ id: r.id, text: r.text, at: r.at, eventKind: r.event_kind }));
+}
+
+export function untweetedTransmissions(n: number): Array<{ id: number; text: string; at: number; eventKind: string | null }> {
+  const rows = db
+    .prepare("SELECT id, text, at, event_kind FROM transmissions WHERE tweeted = 0 ORDER BY at DESC LIMIT ?")
+    .all(n) as Array<{ id: number; text: string; at: number; event_kind: string | null }>;
+  return rows.map((r) => ({ id: r.id, text: r.text, at: r.at, eventKind: r.event_kind }));
+}
+
+export function markTweeted(id: number): void {
+  db.prepare("UPDATE transmissions SET tweeted = 1 WHERE id = ?").run(id);
+}
+
+// ---- tweets: the composed outward posts (§11) -------------------------------
+
+export function insertTweet(text: string, at: number, sourceKind: string | null): void {
+  db.prepare("INSERT INTO tweets (text, at, source_kind) VALUES (?, ?, ?)").run(
+    text,
+    at,
+    sourceKind,
+  );
+}
+
+export function listTweets(n: number): Array<{ id: number; text: string; at: number; sourceKind: string | null }> {
+  const rows = db
+    .prepare("SELECT id, text, at, source_kind FROM tweets ORDER BY at DESC LIMIT ?")
+    .all(n) as Array<{ id: number; text: string; at: number; source_kind: string | null }>;
+  return rows.map((r) => ({ id: r.id, text: r.text, at: r.at, sourceKind: r.source_kind }));
 }
 
 // ---- planets ----------------------------------------------------------------

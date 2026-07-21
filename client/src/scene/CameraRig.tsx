@@ -23,6 +23,8 @@ export function CameraRig() {
   const controls = useRef<any>(null);
   const interacted = useRef(false);
   const interestClock = useRef(0);
+  const followDist = useRef<number | null>(null);
+  const zoomingUntil = useRef(0); // wheel active: let the user set the distance
   const gl = useThree((s) => s.gl);
   const camera = useThree((s) => s.camera);
 
@@ -32,15 +34,22 @@ export function CameraRig() {
       interacted.current = true;
       if (controls.current) controls.current.autoRotate = false;
     };
+    const onWheel = () => {
+      mark();
+      zoomingUntil.current = performance.now() + 500;
+    };
     el.addEventListener("pointerdown", mark);
-    el.addEventListener("wheel", mark, { passive: true });
+    el.addEventListener("wheel", onWheel, { passive: true });
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") useCosmos.getState().select(null);
+      if (e.key === "Escape") {
+        useCosmos.getState().select(null);
+        useCosmos.getState().setFollow(false);
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => {
       el.removeEventListener("pointerdown", mark);
-      el.removeEventListener("wheel", mark);
+      el.removeEventListener("wheel", onWheel);
       window.removeEventListener("keydown", onKey);
     };
   }, [gl]);
@@ -58,6 +67,22 @@ export function CameraRig() {
       reportCameraInterest([t.x, t.y, t.z], radius);
     }
 
+    // auto-follow first: the target rides whatever the mind is at, and the
+    // camera KEEPS the spectator's chosen distance as it travels
+    if (useCosmos.getState().followMind && !introActive()) {
+      ctl.target.lerp(followAnchor, 1 - Math.exp(-dt * 2.2));
+      _dir.copy(camera.position).sub(ctl.target);
+      const cur = Math.max(0.001, _dir.length());
+      if (followDist.current == null || performance.now() < zoomingUntil.current) {
+        followDist.current = cur; // the user is dialing the zoom — respect it
+      } else {
+        const next = cur + (followDist.current - cur) * (1 - Math.exp(-dt * 5));
+        camera.position.copy(ctl.target).addScaledVector(_dir.normalize(), next);
+      }
+      return;
+    }
+    followDist.current = null;
+
     const selected = selectedPlanetId && !introActive()
       ? useCosmos.getState().planets.find((p) => p.id === selectedPlanetId)
       : undefined;
@@ -71,13 +96,6 @@ export function CameraRig() {
       const next = cur + (want - cur) * (1 - Math.exp(-dt * 1.6));
       _dir.copy(camera.position).sub(ctl.target).normalize().multiplyScalar(next);
       camera.position.copy(ctl.target).add(_dir);
-      return;
-    }
-
-    // auto-follow: center the world the mind is circling (stable framing —
-    // the light orbits inside the shot); the light itself when it's alone
-    if (useCosmos.getState().followMind && !introActive()) {
-      ctl.target.lerp(followAnchor, 1 - Math.exp(-dt * 2.2));
       return;
     }
 

@@ -36,6 +36,7 @@ type CosmosStore = {
   followMind: boolean; // camera keeps the mind-light in focus
   setConnected: (v: boolean) => void;
   toggleFollow: () => void;
+  setFollow: (v: boolean) => void;
   applySnapshot: (s: {
     ignitionAt: number | null;
     planets: Planet[];
@@ -72,6 +73,7 @@ export const useCosmos = create<CosmosStore>()((set) => ({
   followMind: false,
   setConnected: (v) => set({ connected: v }),
   toggleFollow: () => set((s) => ({ followMind: !s.followMind, selectedPlanetId: null })),
+  setFollow: (v) => set({ followMind: v, ...(v ? {} : { selectedPlanetId: null }) }),
   applySnapshot: (s) =>
     set({
       ignitionAt: s.ignitionAt,

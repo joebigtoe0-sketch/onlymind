@@ -130,6 +130,7 @@
         <div class="row" style="margin-top: 10px">
           <input id="txtext" placeholder="manual transmission…" style="flex: 1" />
           <button id="transmit">queue</button>
+          <button id="tweetnow">compose tweet now</button>
         </div>
       </div>
 
@@ -184,6 +185,7 @@
         const text = $("#txtext").value.trim();
         if (text) post("transmit", { text });
       });
+      $("#tweetnow").addEventListener("click", () => post("tweet"));
       $("#reset").addEventListener("click", () => {
         if (confirm("Wipe this mind and its entire history forever?") && confirm("Forever forever?")) {
           post("reset");

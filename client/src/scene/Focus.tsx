@@ -34,8 +34,7 @@ export function Focus() {
   const group = useRef<THREE.Group>(null);
   const mote = useRef<THREE.Mesh>(null);
   const moteMat = useRef<THREE.MeshBasicMaterial>(null);
-  const innerShell = useRef<THREE.Mesh>(null);
-  const outerShell = useRef<THREE.Mesh>(null);
+  const veil = useRef<THREE.Mesh>(null);
   const glow = useRef<THREE.Sprite>(null);
   const pos = useRef(new THREE.Vector3(0, 0.4, 0));
   const attended = useRef<string | null>(null); // sticky attention
@@ -58,8 +57,7 @@ export function Focus() {
       depthWrite: false,
       blending: THREE.AdditiveBlending,
     });
-  const innerMat = useMemo(() => makeSoulMat(3.7, 0.34, 1.6), []);
-  const outerMat = useMemo(() => makeSoulMat(8.1, 0.62, 0.8), []);
+  const veilMat = useMemo(() => makeSoulMat(3.7, 0.5, 1.4), []);
 
   useFrame((_, dt) => {
     const g = group.current;
@@ -80,13 +78,13 @@ export function Focus() {
 
     let heatTarget = 0;
     let visibility = 1;
-    let anchoredWorld = false;
+    let anchorId: string | null = null;
 
     if (seed && focus.phase !== "core" && focus.phase !== "release") {
       // the server-owned drama: capture spiral, infall, absorption
       planetPosition(seed, now, _planet);
       followAnchor.copy(_planet);
-      anchoredWorld = true;
+      anchorId = seed.id;
       const bodyR = radiusForMass(seed.targetMass);
       if (focus.phase === "capture") {
         const k = Math.min(1, phaseAge / 26);
@@ -128,7 +126,7 @@ export function Focus() {
       if (world) {
         planetPosition(world, now, _planet);
         followAnchor.copy(_planet);
-        anchoredWorld = true;
+        anchorId = world.id;
         const orbitR = radiusForMass(world.targetMass) * 2.2 + 0.4;
         const a = t * 1.1;
         _target.set(
@@ -152,7 +150,14 @@ export function Focus() {
     pos.current.lerp(_target, 1 - Math.exp(-dt * 2.6));
     g.position.copy(pos.current);
     mindLightPos.copy(pos.current);
-    if (!anchoredWorld) followAnchor.copy(pos.current);
+    if (!anchorId) followAnchor.copy(pos.current);
+
+    // while auto-following, the panel shows the world the mind is at:
+    // arriving opens its log; leaving hands the panel back to the stream
+    const st = useCosmos.getState();
+    if (st.followMind && st.selectedPlanetId !== anchorId) {
+      st.select(anchorId);
+    }
 
     // heat the inhabited world (read by Planet each frame)
     dyn.fixationPlanetId = focus.planetId;
@@ -178,23 +183,14 @@ export function Focus() {
     mote.current!.scale.setScalar(coreScale);
     moteMat.current!.color.copy(tint).multiplyScalar(3.0 + snapGlow);
 
-    // the soul veils: inner tight, outer loose, both rising, slightly tall
-    const pTime = performance.now() / 1000;
-    const inner = innerShell.current!;
-    const isc = Math.max(0.001, coreScale * 2.1);
-    inner.scale.set(isc, isc * 1.18, isc);
-    inner.rotation.y = t * 0.25;
-    innerMat.uniforms.uTime.value = pTime;
-    (innerMat.uniforms.uColor.value as THREE.Color).copy(tint);
-    innerMat.uniforms.uIntensity.value = (1.6 + snapGlow * 0.8) * visibility * settle;
-
-    const outer = outerShell.current!;
-    const osc = Math.max(0.001, coreScale * 3.3);
-    outer.scale.set(osc, osc * 1.25, osc);
-    outer.rotation.y = -t * 0.13;
-    outerMat.uniforms.uTime.value = pTime * 0.8;
-    (outerMat.uniforms.uColor.value as THREE.Color).copy(tint);
-    outerMat.uniforms.uIntensity.value = (0.8 + snapGlow * 0.4) * visibility * settle;
+    // the soul veil: one gauze layer, rising, slightly tall
+    const v = veil.current!;
+    const vsc = Math.max(0.001, coreScale * 2.5);
+    v.scale.set(vsc, vsc * 1.2, vsc);
+    v.rotation.y = t * 0.2;
+    veilMat.uniforms.uTime.value = performance.now() / 1000;
+    (veilMat.uniforms.uColor.value as THREE.Color).copy(tint);
+    veilMat.uniforms.uIntensity.value = (1.4 + snapGlow * 0.8) * visibility * settle;
 
     const gm = glow.current!.material as THREE.SpriteMaterial;
     gm.color.copy(tint);
@@ -211,10 +207,7 @@ export function Focus() {
           <meshBasicMaterial ref={moteMat} toneMapped={false} />
         </mesh>
       </Trail>
-      <mesh ref={innerShell} material={innerMat}>
-        <sphereGeometry args={[1, 48, 48]} />
-      </mesh>
-      <mesh ref={outerShell} material={outerMat}>
+      <mesh ref={veil} material={veilMat}>
         <sphereGeometry args={[1, 48, 48]} />
       </mesh>
       <sprite ref={glow}>

@@ -67,12 +67,18 @@ export function resolveCognition(c: Cognition) {
         record(text, planetId);
         if (episode.populatedIntent && mind.depth === 3) {
           // the populated world (§8): many lives at once
-          splitVillage(VILLAGERS[Math.floor(Math.random() * VILLAGERS.length)]);
-          if (planetId) maybePaintVision(planetId, `${text}`);
+          const village = VILLAGERS[Math.floor(Math.random() * VILLAGERS.length)];
+          splitVillage(village);
+          if (planetId) maybePaintVision(planetId, `${village.join("; ")}. ${text}`);
         } else if (canSplit() && c.target) {
           split(c.target);
-          // becoming a species or a person: the thought can be painted
-          if (planetId && mind.depth >= 3) maybePaintVision(planetId, `${c.target}. ${text}`);
+          // the deep moments get painted: always the person/species (depth 4),
+          // sometimes the creature (depth 3) — never the world's first thought
+          if (planetId && mind.depth === 4) {
+            maybePaintVision(planetId, `${c.target}. ${text}`);
+          } else if (planetId && mind.depth === 3 && Math.random() < 0.35) {
+            maybePaintVision(planetId, `${c.target}. ${text}`);
+          }
         } else {
           inhabit(c.believes_this_is_real);
         }
@@ -108,6 +114,10 @@ export function resolveCognition(c: Cognition) {
         record(text, planetId);
         inhabit(c.believes_this_is_real);
         if (planetId) recur(planetId, 0.04);
+        // sometimes a lived moment itself becomes a vision
+        if (planetId && mind.depth >= 4 && Math.random() < 0.25) {
+          maybePaintVision(planetId, text);
+        }
       }
     }
     return;
@@ -167,9 +177,6 @@ export function resolveCognition(c: Cognition) {
         record(text, target);
         descend(target);
         queueTransmission(text, "descend");
-        // seeing the world from within, for the first time
-        const world = sim.planets.find((p) => p.id === target);
-        maybePaintVision(target, `${world?.birthThought ?? ""}. ${text}`);
       } else {
         record(text, target);
       }

@@ -1,0 +1,61 @@
+import * as db from "../db/store";
+import { kvGet, kvSet } from "../db/store";
+
+// The tweet composer (§11): sits on the transmissions queue and, on the
+// rhythm of a real account — bursty after real events, then quiet — composes
+// what the mind would post. Nothing is posted anywhere: the tweets table is
+// the whole output, and the future X integration drains it.
+
+const GAP_MIN = Number(process.env.TWEET_GAP_MIN ?? 20); // ordinary silence
+const FAST_MIN = Number(process.env.TWEET_FAST_MIN ?? 6); // after a heavy beat
+
+// the weight of each kind of moment (lower = louder)
+const PRIORITY: Record<string, number> = {
+  lesson: 0,
+  snap_back: 1,
+  division: 2,
+  mark: 3,
+  doubt: 4,
+  companion: 5,
+  attention: 6,
+  descend: 7,
+  manual: 8,
+  reach_out: 9,
+  ambient: 10,
+};
+
+const HEAVY = new Set(["lesson", "snap_back", "division", "mark", "doubt"]);
+
+function prio(kind: string | null): number {
+  return PRIORITY[kind ?? "ambient"] ?? 10;
+}
+
+export function composeTweetNow(): { text: string; sourceKind: string | null } | null {
+  const pool = db.untweetedTransmissions(50);
+  if (pool.length === 0) return null;
+  pool.sort((a, b) => prio(a.eventKind) - prio(b.eventKind) || b.at - a.at);
+  const chosen = pool[0];
+  const text = chosen.text.slice(0, 280);
+  db.insertTweet(text, Date.now(), chosen.eventKind);
+  db.markTweeted(chosen.id);
+  kvSet("lastTweetAt", String(Date.now()));
+  return { text, sourceKind: chosen.eventKind };
+}
+
+export function startTweetComposer() {
+  let nextJitter = Math.random(); // varies each gap so the rhythm feels alive
+  const tick = () => {
+    const last = Number(kvGet("lastTweetAt") ?? 0);
+    const pool = db.untweetedTransmissions(50);
+    if (pool.length > 0) {
+      const heavyWaiting = pool.some((t) => HEAVY.has(t.eventKind ?? ""));
+      const gapMin = (heavyWaiting ? FAST_MIN : GAP_MIN) * (0.7 + nextJitter * 0.8);
+      if (Date.now() - last > gapMin * 60 * 1000) {
+        composeTweetNow();
+        nextJitter = Math.random();
+      }
+    }
+    setTimeout(tick, 60 * 1000);
+  };
+  setTimeout(tick, 90 * 1000);
+}
