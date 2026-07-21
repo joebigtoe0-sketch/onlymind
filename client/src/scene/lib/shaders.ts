@@ -144,18 +144,11 @@ void main() {
 }
 `;
 
-// The energy ball: animated plasma wisps curling around a bright core —
-// used by the mind-light and (smaller, dimmer) the holder-shards.
-export const ENERGY_FRAG = /* glsl */ `
-uniform vec3 uColor;
-uniform float uTime;
-uniform float uSeed;
-uniform float uIntensity;
+// The soul: a veil of light whose SILHOUETTE is wispy — vertices displaced by
+// flowing noise into rising flame-tongues, shaded as a soft fresnel veil.
+// Used by the mind-light (two layers) and, smaller, the holder-shards.
 
-varying vec3 vNormal;
-varying vec3 vWorldPos;
-varying vec3 vObjPos;
-
+const NOISE_GLSL = /* glsl */ `
 float hash(vec3 p) {
   p = fract(p * 0.3183099 + vec3(0.1, 0.2, 0.3));
   p *= 17.0;
@@ -184,23 +177,68 @@ float fbm(vec3 p) {
   }
   return s;
 }
+`;
+
+export const ENERGY_VERT = /* glsl */ `
+uniform float uTime;
+uniform float uSeed;
+uniform float uWobble;
+
+varying vec3 vNormal;
+varying vec3 vWorldPos;
+varying vec3 vObjPos;
+
+${NOISE_GLSL}
+
+void main() {
+  vObjPos = position;
+  vec3 n = normalize(position);
+
+  // the veil breathes: slow body swell + faster rising tongues, licking
+  // upward more strongly above the equator — a flame that is not on fire
+  float flow = fbm(n * 2.3 + vec3(0.0, -uTime * 0.55, 0.0) + uSeed);
+  float tongues = fbm(n * 4.2 + vec3(0.0, -uTime * 1.05, 0.0) + uSeed * 2.0);
+  float top = smoothstep(-0.4, 1.0, n.y);
+  float disp = (flow - 0.45) * 0.55 + (tongues - 0.5) * 0.45 * top;
+  vec3 displaced = position + n * disp * uWobble;
+  displaced.y += top * top * uWobble * 0.5 * (tongues + 0.2);
+
+  vNormal = normalize(mat3(modelMatrix) * n);
+  vec4 wp = modelMatrix * vec4(displaced, 1.0);
+  vWorldPos = wp.xyz;
+  gl_Position = projectionMatrix * viewMatrix * wp;
+}
+`;
+
+export const ENERGY_FRAG = /* glsl */ `
+uniform vec3 uColor;
+uniform float uTime;
+uniform float uSeed;
+uniform float uIntensity;
+
+varying vec3 vNormal;
+varying vec3 vWorldPos;
+varying vec3 vObjPos;
+
+${NOISE_GLSL}
 
 void main() {
   vec3 N = normalize(vNormal);
   vec3 V = normalize(cameraPosition - vWorldPos);
-  float fres = pow(1.0 - abs(dot(N, V)), 1.25);
+  float fres = pow(1.0 - abs(dot(N, V)), 1.6);
   vec3 p = normalize(vObjPos);
 
-  // rising, curling filaments: ridged noise, domain-warped, flowing upward
-  vec3 q = p * 2.6 + vec3(0.0, -uTime * 0.35, 0.0) + uSeed;
-  float n1 = fbm(q + fbm(q + uTime * 0.1) * 0.9);
-  float fil1 = smoothstep(0.22, 0.02, abs(n1 - 0.5));
-  vec3 r = p * 5.2 + vec3(uTime * 0.12, -uTime * 0.55, 0.0) + uSeed * 2.0;
-  float fil2 = smoothstep(0.15, 0.0, abs(fbm(r) - 0.55)) * 0.7;
+  // soft streaks of light flowing upward through the veil
+  float streaks = fbm(p * 3.1 + vec3(0.0, -uTime * 0.7, 0.0) + uSeed);
+  float veil = 0.4 + 0.6 * smoothstep(0.3, 0.8, streaks);
+  float top = smoothstep(-0.6, 0.9, p.y);
 
-  float wisp = (fil1 + fil2) * (0.35 + 0.65 * fres);
-  vec3 col = uColor * wisp * uIntensity + uColor * fres * 0.25 * uIntensity;
-  gl_FragColor = vec4(col, min(1.0, wisp + fres * 0.2));
+  vec3 col = uColor * fres * veil * (0.8 + top * 0.5) * uIntensity;
+  col += uColor * pow(fres, 3.0) * 0.7 * uIntensity; // bright rim
+  col += vec3(1.0) * pow(fres, 6.0) * 0.35 * uIntensity; // white edge sparks
+
+  float a = clamp(fres * veil * 1.25, 0.0, 1.0);
+  gl_FragColor = vec4(col, a);
 }
 `;
 

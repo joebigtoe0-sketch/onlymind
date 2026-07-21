@@ -6,7 +6,7 @@ import { useCosmos } from "../store";
 import { introActive, sceneNow } from "../lib/time";
 import { planetPosition, radiusForMass } from "./lib/orbit";
 import { getSharedGlowTexture } from "./lib/textures";
-import { ENERGY_FRAG, PLANET_VERT } from "./lib/shaders";
+import { ENERGY_FRAG, ENERGY_VERT } from "./lib/shaders";
 
 // The holder-shards: permanent small lives orbiting close to their home
 // worlds. Dimmer and steadier than the mind's own descent-motes — they are
@@ -58,9 +58,10 @@ export function Dwellers() {
           uColor: { value: TINT.clone() },
           uTime: { value: 0 },
           uSeed: { value: 1.3 },
-          uIntensity: { value: 1.1 },
+          uWobble: { value: 0.5 },
+          uIntensity: { value: 1.0 },
         },
-        vertexShader: PLANET_VERT,
+        vertexShader: ENERGY_VERT,
         fragmentShader: ENERGY_FRAG,
         transparent: true,
         depthWrite: false,
@@ -128,8 +129,8 @@ export function Dwellers() {
               opacity={0.24}
             />
           </sprite>
-          <mesh material={energyMat} scale={[2.8, 2.8, 2.8]}>
-            <sphereGeometry args={[1, 16, 16]} />
+          <mesh material={energyMat} scale={[2.6, 3.0, 2.6]}>
+            <sphereGeometry args={[1, 24, 24]} />
           </mesh>
         </group>
       ))}

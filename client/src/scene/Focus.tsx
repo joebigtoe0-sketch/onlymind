@@ -7,11 +7,15 @@ import { cosmosNow, introActive } from "../lib/time";
 import { dyn } from "./dynamics";
 import { planetPosition, radiusForMass } from "./lib/orbit";
 import { getSharedGlowTexture } from "./lib/textures";
-import { ENERGY_FRAG, PLANET_VERT } from "./lib/shaders";
+import { ENERGY_FRAG, ENERGY_VERT } from "./lib/shaders";
 
-// live world position of the mind-light — read by the camera's auto-follow
-// and by the split-flights that detach from it
+// live world position of the mind-light — read by the split-flights that
+// detach from it
 export const mindLightPos = new THREE.Vector3(0, 0.4, 0);
+
+// what the auto-follow camera should center: the world being circled while
+// the mind dreams at it, or the light itself when it is alone at the center
+export const followAnchor = new THREE.Vector3(0, 0, 0);
 
 // The mind-light: the mind itself, made visible. In its clearest form —
 // inside nothing — it is only this small light at the center, tracing a slow
@@ -24,38 +28,38 @@ const _planet = new THREE.Vector3();
 const COLD = new THREE.Color("#a9b9ff");
 const WARM = new THREE.Color("#ffd9a0");
 
-const ATTEND_MS = 14000; // how long a fresh thought holds its attention
-
 export function Focus() {
   const ignitionAt = useCosmos((s) => s.ignitionAt);
 
   const group = useRef<THREE.Group>(null);
   const mote = useRef<THREE.Mesh>(null);
   const moteMat = useRef<THREE.MeshBasicMaterial>(null);
-  const shellRef = useRef<THREE.Mesh>(null);
+  const innerShell = useRef<THREE.Mesh>(null);
+  const outerShell = useRef<THREE.Mesh>(null);
   const glow = useRef<THREE.Sprite>(null);
   const pos = useRef(new THREE.Vector3(0, 0.4, 0));
+  const attended = useRef<string | null>(null); // sticky attention
   const glowTex = useMemo(() => getSharedGlowTexture(), []);
   const tint = useMemo(() => new THREE.Color(), []);
 
-  // the plasma wisps that make it an energy ball, not a dot
-  const energyMat = useMemo(
-    () =>
-      new THREE.ShaderMaterial({
-        uniforms: {
-          uColor: { value: new THREE.Color("#ffd9a0") },
-          uTime: { value: 0 },
-          uSeed: { value: 3.7 },
-          uIntensity: { value: 1.7 },
-        },
-        vertexShader: PLANET_VERT,
-        fragmentShader: ENERGY_FRAG,
-        transparent: true,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending,
-      }),
-    [],
-  );
+  // the soul: two displaced flame-veils around the bright core
+  const makeSoulMat = (seed: number, wobble: number, intensity: number) =>
+    new THREE.ShaderMaterial({
+      uniforms: {
+        uColor: { value: new THREE.Color("#ffd9a0") },
+        uTime: { value: 0 },
+        uSeed: { value: seed },
+        uWobble: { value: wobble },
+        uIntensity: { value: intensity },
+      },
+      vertexShader: ENERGY_VERT,
+      fragmentShader: ENERGY_FRAG,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
+  const innerMat = useMemo(() => makeSoulMat(3.7, 0.34, 1.6), []);
+  const outerMat = useMemo(() => makeSoulMat(8.1, 0.62, 0.8), []);
 
   useFrame((_, dt) => {
     const g = group.current;
@@ -76,10 +80,13 @@ export function Focus() {
 
     let heatTarget = 0;
     let visibility = 1;
+    let anchoredWorld = false;
 
     if (seed && focus.phase !== "core" && focus.phase !== "release") {
       // the server-owned drama: capture spiral, infall, absorption
       planetPosition(seed, now, _planet);
+      followAnchor.copy(_planet);
+      anchoredWorld = true;
       const bodyR = radiusForMass(seed.targetMass);
       if (focus.phase === "capture") {
         const k = Math.min(1, phaseAge / 26);
@@ -103,25 +110,30 @@ export function Focus() {
         visibility = 0.12;
       }
     } else {
-      // free attention follows the freshest thought: a birth, a return, a
-      // held idea — the light goes to it and circles while it thinks
-      let attended = null as (typeof planets)[number] | null;
+      // free attention is STICKY: the newest thought can move it — to a
+      // world (fly there and keep circling) or home (a thought held at the
+      // core) — but between thoughts it stays where it is, dreaming
       for (let i = thoughts.length - 1; i >= 0; i--) {
         const th = thoughts[i];
         if (th.voice === "shard") continue; // the shards think for themselves
-        if (now - th.at > ATTEND_MS) break;
-        if (th.planetId) {
-          attended = planets.find((p) => p.id === th.planetId && p.alive) ?? null;
-          if (attended) break;
-        }
+        if (th.planetId) attended.current = th.planetId;
+        else if (now - th.at < 10000) attended.current = null; // called home
+        break;
       }
-      if (attended) {
-        planetPosition(attended, now, _planet);
-        const orbitR = radiusForMass(attended.targetMass) * 2.2 + 0.4;
-        const a = t * 1.25;
+      const world = attended.current
+        ? planets.find((p) => p.id === attended.current && p.alive)
+        : undefined;
+      if (!world) attended.current = null;
+
+      if (world) {
+        planetPosition(world, now, _planet);
+        followAnchor.copy(_planet);
+        anchoredWorld = true;
+        const orbitR = radiusForMass(world.targetMass) * 2.2 + 0.4;
+        const a = t * 1.1;
         _target.set(
           _planet.x + Math.cos(a) * orbitR,
-          _planet.y + Math.sin(t * 1.9) * orbitR * 0.25,
+          _planet.y + Math.sin(t * 1.7) * orbitR * 0.25,
           _planet.z + Math.sin(a) * orbitR,
         );
       } else {
@@ -140,6 +152,7 @@ export function Focus() {
     pos.current.lerp(_target, 1 - Math.exp(-dt * 2.6));
     g.position.copy(pos.current);
     mindLightPos.copy(pos.current);
+    if (!anchoredWorld) followAnchor.copy(pos.current);
 
     // heat the inhabited world (read by Planet each frame)
     dyn.fixationPlanetId = focus.planetId;
@@ -165,12 +178,23 @@ export function Focus() {
     mote.current!.scale.setScalar(coreScale);
     moteMat.current!.color.copy(tint).multiplyScalar(3.0 + snapGlow);
 
-    const sh = shellRef.current!;
-    sh.scale.setScalar(Math.max(0.001, coreScale * 2.9));
-    sh.rotation.y = t * 0.22;
-    energyMat.uniforms.uTime.value = performance.now() / 1000;
-    (energyMat.uniforms.uColor.value as THREE.Color).copy(tint);
-    energyMat.uniforms.uIntensity.value = (1.5 + snapGlow * 0.7) * visibility * settle;
+    // the soul veils: inner tight, outer loose, both rising, slightly tall
+    const pTime = performance.now() / 1000;
+    const inner = innerShell.current!;
+    const isc = Math.max(0.001, coreScale * 2.1);
+    inner.scale.set(isc, isc * 1.18, isc);
+    inner.rotation.y = t * 0.25;
+    innerMat.uniforms.uTime.value = pTime;
+    (innerMat.uniforms.uColor.value as THREE.Color).copy(tint);
+    innerMat.uniforms.uIntensity.value = (1.6 + snapGlow * 0.8) * visibility * settle;
+
+    const outer = outerShell.current!;
+    const osc = Math.max(0.001, coreScale * 3.3);
+    outer.scale.set(osc, osc * 1.25, osc);
+    outer.rotation.y = -t * 0.13;
+    outerMat.uniforms.uTime.value = pTime * 0.8;
+    (outerMat.uniforms.uColor.value as THREE.Color).copy(tint);
+    outerMat.uniforms.uIntensity.value = (0.8 + snapGlow * 0.4) * visibility * settle;
 
     const gm = glow.current!.material as THREE.SpriteMaterial;
     gm.color.copy(tint);
@@ -187,8 +211,11 @@ export function Focus() {
           <meshBasicMaterial ref={moteMat} toneMapped={false} />
         </mesh>
       </Trail>
-      <mesh ref={shellRef} material={energyMat}>
-        <sphereGeometry args={[1, 32, 32]} />
+      <mesh ref={innerShell} material={innerMat}>
+        <sphereGeometry args={[1, 48, 48]} />
+      </mesh>
+      <mesh ref={outerShell} material={outerMat}>
+        <sphereGeometry args={[1, 48, 48]} />
       </mesh>
       <sprite ref={glow}>
         <spriteMaterial

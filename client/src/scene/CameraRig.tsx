@@ -5,7 +5,7 @@ import * as THREE from "three";
 import { useCosmos } from "../store";
 import { cosmosNow, introActive, sceneNow } from "../lib/time";
 import { planetPosition, radiusForMass } from "./lib/orbit";
-import { mindLightPos } from "./Focus";
+import { followAnchor } from "./Focus";
 import { reportCameraInterest } from "../net/socket";
 
 // Free-fly spectator camera. After ignition it slowly pulls back to reveal
@@ -74,9 +74,10 @@ export function CameraRig() {
       return;
     }
 
-    // auto-follow: the camera's focus rides the mind-light itself
+    // auto-follow: center the world the mind is circling (stable framing —
+    // the light orbits inside the shot); the light itself when it's alone
     if (useCosmos.getState().followMind && !introActive()) {
-      ctl.target.lerp(mindLightPos, 1 - Math.exp(-dt * 3));
+      ctl.target.lerp(followAnchor, 1 - Math.exp(-dt * 2.2));
       return;
     }
 
