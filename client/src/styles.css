@@ -1,0 +1,573 @@
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  background: #000;
+  overflow: hidden;
+}
+
+#root {
+  position: fixed;
+  inset: 0;
+}
+
+canvas {
+  display: block;
+}
+
+.hud {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+  user-select: none;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+/* live thoughts surfacing in space (drei Html anchors) */
+.thought-wrap {
+  pointer-events: none !important;
+}
+
+.thought {
+  pointer-events: none;
+  user-select: none;
+  width: 340px;
+  text-align: center;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-size: 15px;
+  font-weight: 300;
+  letter-spacing: 0.13em;
+  line-height: 1.55;
+  color: #d6dbee;
+  text-shadow:
+    0 0 8px rgba(0, 0, 0, 0.9),
+    0 1px 3px rgba(0, 0, 0, 0.8);
+  opacity: 0;
+  animation: thought-life 9.5s ease forwards;
+}
+
+@keyframes thought-life {
+  0% {
+    opacity: 0;
+    filter: blur(4px);
+  }
+  9% {
+    opacity: 0.9;
+    filter: blur(0);
+  }
+  70% {
+    opacity: 0.82;
+    filter: blur(0);
+  }
+  100% {
+    opacity: 0;
+    filter: blur(5px);
+  }
+}
+
+/* ---- the log of a held thought (click-a-planet) ---- */
+
+.log-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 60;
+  width: 360px;
+  max-width: 85vw;
+  box-sizing: border-box;
+  padding: 30px 28px 24px;
+  overflow-y: auto;
+  background: rgba(4, 5, 10, 0.82);
+  border-left: 1px solid rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(10px);
+  color: #cfd4e8;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  animation: log-in 0.45s ease;
+}
+
+@keyframes log-in {
+  from {
+    transform: translateX(24px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.log-close {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  background: none;
+  border: none;
+  color: #7b8098;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.log-close:hover {
+  color: #e7eaf6;
+}
+
+.log-eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.log-title {
+  margin: 14px 0 12px;
+  font-size: 19px;
+  font-weight: 300;
+  letter-spacing: 0.04em;
+  line-height: 1.45;
+  color: #eceff9;
+}
+
+.log-meta {
+  display: flex;
+  gap: 16px;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: #8b91ac;
+}
+
+.log-divider {
+  height: 1px;
+  margin: 20px 0 16px;
+  background: linear-gradient(to right, rgba(255, 255, 255, 0.14), transparent);
+}
+
+.log-list-label {
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: #7b8098;
+  margin-bottom: 12px;
+}
+
+.log-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+
+.log-list li {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+}
+
+.log-t {
+  flex: 0 0 auto;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: #6b7089;
+  font-variant-numeric: tabular-nums;
+}
+
+.log-text {
+  font-size: 13px;
+  font-weight: 300;
+  letter-spacing: 0.03em;
+  line-height: 1.55;
+  color: #c6cce2;
+}
+
+.log-loading {
+  margin-top: 30px;
+  font-size: 12px;
+  letter-spacing: 0.24em;
+  color: #7b8098;
+}
+
+.log-death {
+  margin-top: 14px;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: #8d9ab8;
+  border-left: 2px solid rgba(141, 154, 184, 0.4);
+  padding-left: 10px;
+}
+
+.log-lineage {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 300;
+  letter-spacing: 0.04em;
+  color: #c6cce2;
+}
+
+.log-lineage li::before {
+  content: "↳ ";
+  color: #6b7089;
+}
+
+.log-lineage li:first-child::before {
+  content: "";
+}
+
+/* the companion's voice reads as the other side of the conversation */
+.thought-other {
+  font-style: italic;
+  color: #f0d3da;
+}
+
+/* ---- instruments (§3) ---- */
+
+.instruments {
+  position: fixed;
+  left: 34px;
+  bottom: 26px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  pointer-events: none;
+  user-select: none;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  opacity: 0;
+  animation: wordmark-in 5s ease 8s forwards;
+}
+
+.meter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  color: #8b91ac;
+}
+
+.meter-label {
+  width: 120px;
+  text-align: right;
+  text-transform: uppercase;
+}
+
+.meter-bar {
+  width: 90px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.09);
+  overflow: hidden;
+}
+
+.meter-fill {
+  display: block;
+  height: 100%;
+  background: rgba(207, 212, 232, 0.55);
+  transition: width 0.6s ease;
+}
+
+.meter-value {
+  font-variant-numeric: tabular-nums;
+  color: #a9afc9;
+}
+
+/* ---- leave a mark (§9) ---- */
+
+.mark-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 2, 0.55);
+  backdrop-filter: blur(3px);
+}
+
+.mark-box {
+  width: 320px;
+  padding: 26px 28px;
+  background: rgba(6, 7, 13, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  text-align: center;
+  font-family: "Segoe UI", system-ui, sans-serif;
+}
+
+.mark-title {
+  font-size: 11px;
+  letter-spacing: 0.3em;
+  color: #cfd4e8;
+  text-transform: uppercase;
+}
+
+.mark-input {
+  margin-top: 16px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #e8ebf7;
+  font-size: 15px;
+  letter-spacing: 0.12em;
+  text-align: center;
+  outline: none;
+}
+
+.mark-input:focus {
+  border-color: rgba(255, 217, 160, 0.45);
+}
+
+.mark-hint {
+  margin-top: 12px;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: #6f7590;
+}
+
+/* ---- the archive rail + panels (§3) ---- */
+
+.rail {
+  position: fixed;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  z-index: 55;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rail-tab {
+  writing-mode: vertical-rl;
+  padding: 14px 7px;
+  background: rgba(5, 6, 11, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-right: none;
+  color: #7b8098;
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.rail-tab:hover,
+.rail-tab.active {
+  color: #dfe3f2;
+  background: rgba(10, 12, 20, 0.85);
+}
+
+.side-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 54;
+  width: 340px;
+  max-width: 80vw;
+  box-sizing: border-box;
+  padding: 30px 44px 24px 24px;
+  overflow-y: auto;
+  background: rgba(4, 5, 10, 0.82);
+  border-left: 1px solid rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(10px);
+  font-family: "Segoe UI", system-ui, sans-serif;
+  animation: log-in 0.4s ease;
+}
+
+.stream-list .log-text {
+  color: #b9bfd8;
+}
+
+.signal-text {
+  color: #d9cdb4;
+}
+
+.signal-kind {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: #6f7590;
+}
+
+.atlas-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.atlas-entry {
+  text-align: left;
+  background: rgba(255, 255, 255, 0.025);
+  border: none;
+  border-left: 2px solid #666;
+  padding: 12px 14px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.atlas-entry:hover {
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.atlas-title {
+  font-size: 13px;
+  font-weight: 300;
+  letter-spacing: 0.04em;
+  color: #dfe3f2;
+  line-height: 1.4;
+}
+
+.atlas-meta {
+  margin-top: 5px;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: #7b8098;
+}
+
+.atlas-elegy {
+  margin-top: 9px;
+  font-size: 12px;
+  font-weight: 300;
+  line-height: 1.6;
+  letter-spacing: 0.02em;
+  color: #a7adc6;
+}
+
+/* ---- the inscription (contract address) ---- */
+
+.ca-box {
+  position: fixed;
+  bottom: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 52;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 14px;
+  background: rgba(5, 6, 11, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  backdrop-filter: blur(8px);
+  font-family: "Segoe UI", system-ui, sans-serif;
+  opacity: 0;
+  animation: wordmark-in 4s ease 20s forwards;
+}
+
+.ca-label {
+  font-size: 9px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: #7b8098;
+  white-space: nowrap;
+}
+
+.ca-value {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  color: #dfe3f2;
+}
+
+.ca-copy {
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #cfd4e8;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  padding: 4px 10px;
+  cursor: pointer;
+  min-width: 62px;
+}
+
+.ca-copy:hover {
+  background: rgba(255, 217, 160, 0.14);
+  border-color: rgba(255, 217, 160, 0.4);
+}
+
+/* ---- visions: the painted thoughts ---- */
+
+.log-visions {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.log-visions figure {
+  margin: 0;
+}
+
+.log-visions img {
+  width: 100%;
+  display: block;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  filter: saturate(0.92) brightness(0.96);
+}
+
+.log-visions figcaption {
+  margin-top: 6px;
+  font-size: 11px;
+  font-weight: 300;
+  font-style: italic;
+  letter-spacing: 0.04em;
+  line-height: 1.5;
+  color: #8d93ae;
+}
+
+.wordmark {
+  position: absolute;
+  top: 28px;
+  left: 34px;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.45em;
+  color: #cfd4e8;
+  opacity: 0;
+  animation: wordmark-in 6s ease 3.2s forwards;
+}
+
+@keyframes wordmark-in {
+  to {
+    opacity: 0.4;
+  }
+}
+
+.hint {
+  position: absolute;
+  bottom: 26px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  letter-spacing: 0.28em;
+  color: #9aa2c0;
+  opacity: 0;
+  animation: hint-cycle 12s ease 6.5s forwards;
+}
+
+@keyframes hint-cycle {
+  0% {
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.45;
+  }
+  70% {
+    opacity: 0.45;
+  }
+  100% {
+    opacity: 0;
+  }
+}

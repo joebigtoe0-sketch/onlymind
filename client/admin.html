@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>THE ONLY MIND — admin</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: #04050a;
+        color: #b9bfd8;
+        font: 13px/1.6 "Segoe UI", system-ui, sans-serif;
+      }
+      .wrap {
+        max-width: 620px;
+        margin: 0 auto;
+        padding: 48px 24px;
+      }
+      h1 {
+        font-size: 12px;
+        font-weight: 400;
+        letter-spacing: 0.4em;
+        color: #cfd4e8;
+      }
+      .card {
+        margin-top: 22px;
+        padding: 18px 20px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.07);
+      }
+      .card h2 {
+        margin: 0 0 12px;
+        font-size: 10px;
+        font-weight: 400;
+        letter-spacing: 0.3em;
+        text-transform: uppercase;
+        color: #7b8098;
+      }
+      input,
+      button,
+      textarea {
+        font: inherit;
+        color: #e8ebf7;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        padding: 7px 12px;
+        box-sizing: border-box;
+      }
+      button {
+        cursor: pointer;
+        letter-spacing: 0.1em;
+      }
+      button:hover {
+        background: rgba(255, 255, 255, 0.1);
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+      }
+      #status {
+        white-space: pre-wrap;
+        font-family: ui-monospace, Consolas, monospace;
+        font-size: 11px;
+        color: #8b91ac;
+      }
+      #msg {
+        margin-top: 14px;
+        min-height: 18px;
+        font-size: 11px;
+        letter-spacing: 0.1em;
+        color: #d9cdb4;
+      }
+      .danger {
+        border-color: rgba(255, 120, 120, 0.4);
+        color: #ffb3b3;
+      }
+      .danger:hover {
+        background: rgba(255, 80, 80, 0.12);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>THE ONLY MIND — ADMIN</h1>
+
+      <div class="card">
+        <h2>access</h2>
+        <div class="row">
+          <input id="pass" type="password" placeholder="admin password" style="flex: 1" />
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>state</h2>
+        <div id="status">loading…</div>
+      </div>
+
+      <div class="card">
+        <h2>nudge the next escape</h2>
+        <div class="row">
+          <button data-exp="descend">descend</button>
+          <button data-exp="populate">populated world</button>
+          <button data-exp="companion">companion</button>
+          <button data-exp="refuse">refusal</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>drives &amp; events</h2>
+        <div class="row">
+          <button id="warm">warm +0.2</button>
+          <button id="cool">cool −0.2</button>
+          <button id="spike">attention spike</button>
+          <button id="snapback">force snap-back</button>
+        </div>
+        <div class="row" style="margin-top: 10px">
+          <input id="txtext" placeholder="manual transmission…" style="flex: 1" />
+          <button id="transmit">queue</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>the end</h2>
+        <div class="row">
+          <button id="reset" class="danger">FULL RESET — wipe this mind forever</button>
+        </div>
+      </div>
+
+      <div id="msg"></div>
+    </div>
+
+    <script>
+      const $ = (s) => document.querySelector(s);
+      const pass = $("#pass");
+      pass.value = localStorage.getItem("onlymind-admin") ?? "";
+      pass.addEventListener("input", () => localStorage.setItem("onlymind-admin", pass.value));
+
+      const say = (m) => ($("#msg").textContent = m);
+
+      async function post(path, body) {
+        try {
+          const res = await fetch("/api/admin/" + path, {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              "x-admin-password": pass.value,
+            },
+            body: JSON.stringify(body ?? {}),
+          });
+          const data = await res.json();
+          say(res.ok ? "ok — " + JSON.stringify(data) : "refused — " + (data.error ?? res.status));
+          return res.ok;
+        } catch (e) {
+          say("failed — " + e);
+          return false;
+        }
+      }
+
+      document.querySelectorAll("[data-exp]").forEach((b) =>
+        b.addEventListener("click", () => post("nudge", { experiment: b.dataset.exp })),
+      );
+      $("#warm").addEventListener("click", () => post("mood", { delta: 0.2 }));
+      $("#cool").addEventListener("click", () => post("mood", { delta: -0.2 }));
+      $("#spike").addEventListener("click", () => post("spike"));
+      $("#snapback").addEventListener("click", () => post("snapback"));
+      $("#transmit").addEventListener("click", () => {
+        const text = $("#txtext").value.trim();
+        if (text) post("transmit", { text });
+      });
+      $("#reset").addEventListener("click", () => {
+        if (confirm("Wipe this mind and its entire history forever?") && confirm("Forever forever?")) {
+          post("reset");
+        }
+      });
+
+      async function poll() {
+        try {
+          const h = await (await fetch("/api/health")).json();
+          $("#status").textContent = JSON.stringify(h, null, 2);
+        } catch {
+          $("#status").textContent = "the mind is not answering (rebooting?)";
+        }
+        setTimeout(poll, 4000);
+      }
+      poll();
+    </script>
+  </body>
+</html>
