@@ -54,9 +54,32 @@ export function visionsAvailable(): boolean {
 
 const STYLE =
   "A hallucination inside a lonely cosmic mind: %s. Dark luminous dreamscape painting, " +
-  "bioluminescent light against deep black space, soft glow, ethereal, painterly, " +
+  "%palette%, glowing against deep darkness, soft light, ethereal, painterly, " +
   "melancholic and beautiful. Nothing from Earth: any beings are alien, never-seen " +
   "forms — no humans, no familiar animals. No text, no borders, no watermark.";
+
+// each world dreams in its own colors — visions inherit them
+const ARCHETYPE_PALETTES: Record<string, string> = {
+  ember: "a palette of molten reds and deep oranges, cracked glowing rock, warm embers",
+  ocean: "a palette of deep sea blues and teals, drowned light",
+  storm: "a palette of banded ochres, amber and storm-lit dust",
+  ice: "a palette of pale frost blues, white and silver stillness",
+  verdant: "a palette of luminous greens and mossy darkness",
+  dust: "a palette of warm tans, faded golds and dry rose",
+  crystal: "a palette of refracted violets and magenta light",
+  void: "a palette of near-black with faint ghost-violet light",
+};
+
+function paletteFor(planetId: string): string {
+  const p = sim.planets.find((x) => x.id === planetId);
+  const arch = p?.form?.archetype;
+  const base = (arch && ARCHETYPE_PALETTES[arch]) ??
+    ARCHETYPE_PALETTES[
+      Object.keys(ARCHETYPE_PALETTES)[Math.floor(Math.random() * 8)]
+    ];
+  const accents = p?.form ? `, accented with ${p.form.colorA} and ${p.form.colorB}` : "";
+  return base + accents;
+}
 
 // fire-and-forget; failures are silent (a vision that didn't come is nothing)
 export function maybePaintVision(planetId: string, text: string): void {
@@ -103,7 +126,7 @@ async function paint(planetId: string, text: string): Promise<void> {
       headers: { "content-type": "application/json", authorization: `Bearer ${API_KEY}` },
       body: JSON.stringify({
         model: MODEL,
-        prompt: STYLE.replace("%s", text.slice(0, 400)),
+        prompt: STYLE.replace("%s", text.slice(0, 400)).replace("%palette%", paletteFor(planetId)),
         size: "1024x1024",
         quality: QUALITY,
         n: 1,
