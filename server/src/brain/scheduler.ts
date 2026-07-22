@@ -141,6 +141,7 @@ async function cognize() {
   }
 
   // one-shot contexts become transmissions once they've been felt (§11)
+  if (obs.vast || obs.tearing) queueTransmission(cognition.thought, "pulse");
   if (obs.division) queueTransmission(cognition.thought, "division");
   if (obs.recurrence) queueTransmission(cognition.thought, "recurrence");
   if (obs.anomaly) queueTransmission(cognition.thought, "anomaly");
@@ -177,6 +178,11 @@ function buildObservation(): Observation {
 
   const companionGone = episode.pendingGrief;
   episode.pendingGrief = null;
+
+  const vast = mind.depth === 0 ? mind.pendingVast : null;
+  if (mind.depth === 0) mind.pendingVast = null;
+  const tearing = mind.depth === 0 ? mind.pendingTearing : null;
+  if (mind.depth === 0) mind.pendingTearing = null;
 
   const recurrence = mind.depth === 0 ? mind.pendingRecurrence : null;
   if (mind.depth === 0) mind.pendingRecurrence = null;
@@ -242,6 +248,10 @@ function buildObservation(): Observation {
           }
         : null,
     lessons: mind.depth === 0 ? db.lastLessons(5) : [],
+    tide: Math.round(sim.pulse.tide * 100) / 100,
+    storm: Math.round(sim.pulse.storm * 100) / 100,
+    vast: vast != null,
+    tearing: tearing != null,
     division: consumeDivision(),
     inquiry:
       mind.depth === 0 && inquiryActive

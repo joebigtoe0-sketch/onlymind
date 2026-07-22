@@ -124,7 +124,12 @@ export const useCosmos = create<CosmosStore>()((set) => ({
         } else if (ev.kind === "vision") {
           visions = [...visions.slice(-5), ev.vision];
         } else if (ev.kind === "dweller") {
-          if (ev.fragment) dwellers = [...dwellers, ev.fragment];
+          if (ev.fragment) {
+            const f = ev.fragment;
+            dwellers = dwellers.some((d) => d.id === f.id)
+              ? dwellers.map((d) => (d.id === f.id ? f : d)) // weight update
+              : [...dwellers, f];
+          }
           if (ev.goneId) dwellers = dwellers.filter((d) => d.id !== ev.goneId);
         } else if (ev.kind === "focus") {
           focus = ev.focus;

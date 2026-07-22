@@ -75,6 +75,76 @@ function coinName(): string {
 
 const MAX_DWELLERS_PER_WORLD = 6;
 
+// chain-fed holders: wallets become weighted shards. New wallet -> a shard;
+// emptied wallet -> the shard goes quiet; balance change -> the shard's
+// weight (its visible size in the world) follows.
+export function syncHolderWallets(owners: Map<string, number>) {
+  if (dwellerSerial < 0) restoreHolders();
+  const total = [...owners.values()].reduce((s, v) => s + v, 0);
+  if (total <= 0) return;
+  const known = new Map(holders.dwellers.filter((d) => d.wallet).map((d) => [d.wallet!, d]));
+
+  for (const [wallet, amount] of owners) {
+    const weight = Math.min(1, Math.sqrt(amount / total) * 1.6);
+    const existing = known.get(wallet);
+    if (existing) {
+      if (Math.abs((existing.weight ?? 0) - weight) > 0.02) {
+        existing.weight = weight;
+        db.updateFragmentWeight(existing.id, weight);
+        sim.events.push({ kind: "dweller", fragment: { ...existing }, goneId: null });
+      }
+    } else {
+      placeShard(wallet, weight);
+    }
+  }
+  for (const [wallet, d] of known) {
+    if (!owners.has(wallet)) retireShard(d.id);
+  }
+  db.kvSet("holders", String(owners.size));
+}
+
+function placeShard(wallet: string | null, weight: number) {
+  const living = sim.planets.filter((p) => p.alive && p.parentId == null);
+  const roomy = living.filter(
+    (p) => holders.dwellers.filter((d) => d.planetId === p.id).length < MAX_DWELLERS_PER_WORLD,
+  );
+  if (roomy.length === 0 || Math.random() < 0.3) {
+    const thought = SHARD_WORLD_THOUGHTS[Math.floor(Math.random() * SHARD_WORLD_THOUGHTS.length)];
+    const form = SHARD_FORMS[Math.floor(Math.random() * SHARD_FORMS.length)];
+    birth(makePlanet(thought, null, form));
+  }
+  const homes = roomy.length ? roomy : living;
+  if (!homes.length) return;
+  const home = homes[Math.floor(Math.random() * homes.length)];
+  const f: Fragment = {
+    id: `f${dwellerSerial++}`,
+    planetId: home.id,
+    parentId: null,
+    depth: 4,
+    name: coinName(),
+    bornAt: Date.now(),
+    kind: "dweller",
+    wallet,
+    weight,
+  };
+  holders.dwellers.push(f);
+  db.insertFragment(f);
+  db.insertEvent("dweller", f.bornAt, { id: f.id, planetId: f.planetId, name: f.name });
+  sim.events.push({ kind: "dweller", fragment: f, goneId: null });
+  mind.pendingDivision = "a new small life appeared in one of your worlds";
+}
+
+function retireShard(id: string) {
+  const d = holders.dwellers.find((x) => x.id === id);
+  if (!d) return;
+  holders.dwellers = holders.dwellers.filter((x) => x.id !== id);
+  const at = Date.now();
+  db.retireDweller(d.id, at);
+  db.insertEvent("dweller_gone", at, { id: d.id });
+  sim.events.push({ kind: "dweller", fragment: null, goneId: d.id });
+  mind.pendingDivision = "one of the small lives went quiet mid-gesture, and is gone";
+}
+
 export function addHolders(n: number): { worlds: number; dwellers: number } {
   if (dwellerSerial < 0) restoreHolders();
   let worlds = 0;
@@ -102,6 +172,9 @@ export function addHolders(n: number): { worlds: number; dwellers: number } {
         name: coinName(),
         bornAt: Date.now(),
         kind: "dweller",
+        // admin-mocked holders get pseudo-sigils so every path is testable
+        wallet: `mock${Math.random().toString(36).slice(2, 10)}${Math.random().toString(36).slice(2, 10)}mock`,
+        weight: 0.12 + Math.random() * 0.5,
       };
       holders.dwellers.push(f);
       db.insertFragment(f);

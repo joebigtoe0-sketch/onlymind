@@ -99,7 +99,9 @@ export function Dwellers() {
       const age = (now - d.bornAt) / 1000;
       const grow = Math.min(1, Math.max(0, age - 2.2) / 1.5);
       const flick = 0.85 + 0.15 * Math.sin(t * (2.5 + h1 * 2) + h2 * 9);
-      g.scale.setScalar(Math.max(0.001, 0.055 * grow * flick));
+      // a shard's size is its holder's share of the whole
+      const size = 0.035 + (d.weight ?? 0.2) * 0.11;
+      g.scale.setScalar(Math.max(0.001, size * grow * flick));
       const shell = g.children[2] as THREE.Mesh;
       shell.rotation.set(h1 * 6.28, t * (0.15 + h2 * 0.2), h2 * 6.28);
     }
@@ -131,6 +133,21 @@ export function Dwellers() {
           </sprite>
           <mesh material={energyMat} scale={[1.55, 1.75, 1.55]}>
             <sphereGeometry args={[1, 24, 24]} />
+          </mesh>
+          <mesh
+            visible={false}
+            onClick={(e) => {
+              e.stopPropagation();
+              const d = useCosmos.getState().dwellers[i];
+              if (d) {
+                const st = useCosmos.getState();
+                if (st.followMind) st.setFollow(false);
+                st.select(d.planetId);
+              }
+            }}
+          >
+            <sphereGeometry args={[5, 8, 8]} />
+            <meshBasicMaterial />
           </mesh>
         </group>
       ))}

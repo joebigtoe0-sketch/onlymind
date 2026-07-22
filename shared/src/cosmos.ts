@@ -93,6 +93,8 @@ export const FragmentSchema = z.object({
   name: z.string().nullable(),
   bornAt: z.number(),
   kind: z.enum(["descent", "dweller"]).optional(), // absent = descent
+  wallet: z.string().nullable().optional(), // a dweller's sigil (holder wallet)
+  weight: z.number().optional(), // 0..1 relative size — wallet share of the whole
 });
 export type Fragment = z.infer<typeof FragmentSchema>;
 

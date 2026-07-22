@@ -98,5 +98,6 @@ export const PlanetLogPayload = z.object({
   thoughts: z.array(ThoughtSchema), // full history for this world
   fragments: z.array(FragmentSchema), // who the mind became here
   visions: z.array(VisionSchema), // the thoughts it painted here
+  dwellers: z.array(FragmentSchema), // the shards living here, sigils included
 });
 export type PlanetLog = z.infer<typeof PlanetLogPayload>;

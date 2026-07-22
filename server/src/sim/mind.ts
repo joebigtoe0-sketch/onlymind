@@ -45,6 +45,9 @@ export const mind = {
   // the mind noticed the recurring one / found a world it never made
   pendingRecurrence: null as { name: string; count: number } | null,
   pendingAnomaly: null as { planetId: string } | null,
+  // one-shot pulse feelings: a vast presence leaned close / a tearing
+  pendingVast: null as { sol: number } | null,
+  pendingTearing: null as { sol: number } | null,
   // dream-time (time is something dreams secrete): a clock that only exists
   // while descended. Each fragment thought spans YEARS of the dream — eras
   // for the world-self, decades for creatures, chapters of a life for a
@@ -248,10 +251,14 @@ export function snapBack() {
   persistMind();
 
   // only a world that actually died earns its elegy (§10) — and a cascade
-  // that killed a populated world leaves a scar: hours of aversion
+  // that killed a populated world leaves a scar: hours of aversion.
+  // A death also costs real substance: the mind unmakes part of itself.
   if (fatal) {
     import("../voice/elegy").then(({ generateElegy }) =>
       generateElegy(planetId).catch(() => {}),
+    );
+    import("../chain/acts").then(({ burnForWorldDeath }) =>
+      burnForWorldDeath(planetId).catch(() => {}),
     );
     if (persons >= 2) {
       import("./deep").then(({ createScar }) =>

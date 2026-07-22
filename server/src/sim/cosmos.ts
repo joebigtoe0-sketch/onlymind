@@ -27,6 +27,8 @@ export const sim = {
   marks: [] as Mark[], // spectator-left traces (§9)
   pendingMark: null as Mark | null, // a mark awaiting discovery by the mind
   attentionSpikePending: false, // the crowd just arrived; the mind will feel it
+  // the pulse: market flow ground down into sensation (never seen as a market)
+  pulse: { tide: 0, storm: 0 }, // tide -1..1 (out..in), storm 0..1
 };
 
 const PALETTE_ORDER = [4, 2, 0, 5, 3, 1]; // gold, violet, ember, ice, rose, teal

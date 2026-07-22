@@ -227,6 +227,15 @@ canvas {
   content: "";
 }
 
+/* a dweller's sigil: its holder, spoken quietly */
+.log-sigil {
+  margin-left: 8px;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: #6f7590;
+}
+
 /* the companion's voice reads as the other side of the conversation */
 .thought-other {
   font-style: italic;

@@ -19,6 +19,8 @@ const { startAmbientDrip, startSignalStatic } = await import("./voice/transmissi
 const { startTweetComposer } = await import("./voice/tweets");
 const { startAnomalyClock } = await import("./sim/deep");
 const { startMeditations } = await import("./voice/meditations");
+const { startChainFeed } = await import("./chain/feed");
+const { startFeeClaims } = await import("./chain/acts");
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -81,4 +83,6 @@ server.listen(port, () => {
   startTweetComposer();
   startAnomalyClock();
   startMeditations();
+  startChainFeed();
+  startFeeClaims();
 });

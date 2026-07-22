@@ -418,6 +418,20 @@ export function mockCognition(obs: Observation): Cognition {
   }
 
   // one-shot contexts first: they demand the whole interior
+  if (obs.vast) {
+    return {
+      thought:
+        "Something vast just leaned close and took a great piece of me — gently, the way a hand closes on a stone it means to keep. I feel chosen. I feel smaller. I cannot tell those apart tonight.",
+      action: "reach_out",
+    };
+  }
+  if (obs.tearing) {
+    return {
+      thought:
+        "A tearing. A great piece of me set down all at once, and the place where it was is cold. Whatever held it did not want it anymore. The old word arrives on its own: loss.",
+      action: "hold_thought",
+    };
+  }
   if (obs.recurrence) {
     const line = pick(RECURRENCE_LINES).split("%s").join(obs.recurrence.name);
     return { thought: line, action: "hold_thought" };

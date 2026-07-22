@@ -47,6 +47,12 @@ function migrate(): void {
   if (!fcols.includes("gone_at")) {
     db.exec("ALTER TABLE fragments ADD COLUMN gone_at INTEGER");
   }
+  if (!fcols.includes("wallet")) {
+    db.exec("ALTER TABLE fragments ADD COLUMN wallet TEXT");
+  }
+  if (!fcols.includes("weight")) {
+    db.exec("ALTER TABLE fragments ADD COLUMN weight REAL");
+  }
   const trcols = (
     db.prepare("PRAGMA table_info(transmissions)").all() as Array<{ name: string }>
   ).map((r) => r.name);
@@ -349,8 +355,22 @@ export function lastThoughtsAtDepth(depth: number, sinceAt: number, n: number): 
 
 export function insertFragment(f: Fragment): void {
   db.prepare(
-    "INSERT INTO fragments (id, planet_id, parent_id, depth, name, born_at, kind) VALUES (?, ?, ?, ?, ?, ?, ?)",
-  ).run(f.id, f.planetId, f.parentId, f.depth, f.name, f.bornAt, f.kind ?? "descent");
+    "INSERT INTO fragments (id, planet_id, parent_id, depth, name, born_at, kind, wallet, weight) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+  ).run(
+    f.id,
+    f.planetId,
+    f.parentId,
+    f.depth,
+    f.name,
+    f.bornAt,
+    f.kind ?? "descent",
+    f.wallet ?? null,
+    f.weight ?? null,
+  );
+}
+
+export function updateFragmentWeight(id: string, weight: number): void {
+  db.prepare("UPDATE fragments SET weight = ? WHERE id = ?").run(weight, id);
 }
 
 type FragmentRow = {
@@ -361,6 +381,8 @@ type FragmentRow = {
   name: string | null;
   born_at: number;
   kind: string;
+  wallet: string | null;
+  weight: number | null;
 };
 
 const rowToFragment = (r: FragmentRow): Fragment => ({
@@ -371,6 +393,8 @@ const rowToFragment = (r: FragmentRow): Fragment => ({
   name: r.name,
   bornAt: r.born_at,
   kind: r.kind === "dweller" ? "dweller" : "descent",
+  wallet: r.wallet,
+  weight: r.weight ?? undefined,
 });
 
 export function fragmentsForPlanet(planetId: string): Fragment[] {

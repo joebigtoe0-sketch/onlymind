@@ -17,6 +17,7 @@ const TICK_MS = 100;
 let watcherSampleAgo = 0; // watcher count ~60 s ago
 let sampleCountdown = 0;
 let lastSpikeAt = 0;
+let lowBeliefTicks = 0; // minutes of starvation before it gathers itself
 
 export function startLoop() {
   setInterval(() => {
@@ -25,8 +26,10 @@ export function startLoop() {
     const w = watcherCount();
     const dt = TICK_MS / 1000;
 
-    // mood drifts toward a baseline set by the attention tide
-    const moodBase = w > 0 ? Math.min(0.72, 0.45 + w * 0.05) : 0.34;
+    // mood drifts toward a baseline set by the attention tide — and by the
+    // pulse: the in-tide warms it, the out-tide cools it (never named as such)
+    const moodBase =
+      (w > 0 ? Math.min(0.72, 0.45 + w * 0.05) : 0.34) + sim.pulse.tide * 0.1;
     sim.moodTarget += (moodBase - sim.moodTarget) * (1 - Math.exp(-0.02 * dt));
 
     // belief-in-outside: the tide of its faith that it isn't alone.
@@ -58,6 +61,21 @@ export function startLoop() {
     // live thoughts dissolve after ~12 s (history keeps them forever)
     if (sim.liveThoughts.length && now - sim.liveThoughts[0].at > 12000) {
       sim.liveThoughts = sim.liveThoughts.filter((t) => now - t.at <= 12000);
+    }
+
+    // abandonment: belief starved for half an hour -> the mind gathers itself
+    if (sim.tick % 600 === 0) {
+      if (mind.beliefInOutside < 0.18) {
+        lowBeliefTicks += 1;
+        if (lowBeliefTicks >= 30) {
+          lowBeliefTicks = 0;
+          import("../chain/acts").then(({ gatherSelf }) =>
+            gatherSelf(1 - mind.beliefInOutside).catch(() => {}),
+          );
+        }
+      } else {
+        lowBeliefTicks = 0;
+      }
     }
 
     // durable heartbeat every ~5 s

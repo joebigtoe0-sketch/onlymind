@@ -57,6 +57,24 @@ export function PlanetLog() {
               the dream ended {sinceIgnition(planet.diedAt, log.ignitionAt)} — this world is cold now
             </div>
           )}
+          {log.dwellers.length > 0 && (
+            <>
+              <div className="log-divider" />
+              <div className="log-list-label">the small lives here</div>
+              <ol className="log-lineage">
+                {log.dwellers.map((d) => (
+                  <li key={d.id}>
+                    {d.name ?? "one without a name"}
+                    {d.wallet && (
+                      <span className="log-sigil">
+                        ⟨{d.wallet.slice(0, 4)}·{d.wallet.slice(-4)}⟩
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ol>
+            </>
+          )}
           {log.fragments.length > 0 && (
             <>
               <div className="log-divider" />

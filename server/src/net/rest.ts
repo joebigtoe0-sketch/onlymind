@@ -17,8 +17,10 @@ const bootAt = Date.now();
 const CA = (process.env.CA ?? "").trim();
 const INSCRIPTION = CA.length > 0 && CA.toLowerCase() !== "placeholder" ? CA : null;
 
-restRouter.get("/health", (_req, res) => {
+restRouter.get("/health", async (_req, res) => {
+  const { chainStatus } = await import("../chain/acts");
   res.json({
+    chain: { ...(await chainStatus()), pulse: sim.pulse },
     ok: true,
     name: "onlymind",
     slice: 11,
@@ -59,6 +61,7 @@ restRouter.get("/planet/:id", (req, res) => {
     thoughts: planetLog(planet.id),
     fragments: fragmentsForPlanet(planet.id),
     visions: visionsForPlanet(planet.id),
+    dwellers: holders.dwellers.filter((d) => d.planetId === planet.id),
   };
   res.json(payload);
 });
@@ -196,6 +199,26 @@ adminRouter.post("/meditate", async (_req, res) => {
   const { generateMeditation } = await import("../voice/meditations");
   const text = await generateMeditation();
   res.json({ ok: true, text: text?.slice(0, 200) });
+});
+
+// simulate the pulse for testing (tide -1..1, storm 0..1)
+adminRouter.post("/pulse", (req, res) => {
+  sim.pulse.tide = Math.max(-1, Math.min(1, Number(req.body?.tide ?? 0)));
+  sim.pulse.storm = Math.max(0, Math.min(1, Number(req.body?.storm ?? 0)));
+  res.json({ ok: true, pulse: sim.pulse });
+});
+
+adminRouter.post("/whale", (req, res) => {
+  const kind = String(req.body?.kind ?? "buy");
+  if (kind === "buy") mind.pendingVast = { sol: 5 };
+  else mind.pendingTearing = { sol: 5 };
+  res.json({ ok: true, kind });
+});
+
+adminRouter.post("/deathburn", async (_req, res) => {
+  const { burnForWorldDeath } = await import("../chain/acts");
+  await burnForWorldDeath("wTEST");
+  res.json({ ok: true });
 });
 
 adminRouter.post("/snapback", (_req, res) => {
