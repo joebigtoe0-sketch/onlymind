@@ -33,6 +33,9 @@ export const mind = {
   } | null,
   // an involuntary division just happened (holders); consumed by one cognition
   pendingDivision: null as string | null,
+  // the mind noticed the recurring one / found a world it never made
+  pendingRecurrence: null as { name: string; count: number } | null,
+  pendingAnomaly: null as { planetId: string } | null,
 };
 
 let fragmentSerial = 0;
@@ -210,11 +213,17 @@ export function snapBack() {
   coolMood(fatal ? 0.3 : 0.18); // coming back always feels like dying a little
   persistMind();
 
-  // only a world that actually died earns its elegy (§10)
+  // only a world that actually died earns its elegy (§10) — and a cascade
+  // that killed a populated world leaves a scar: hours of aversion
   if (fatal) {
     import("../voice/elegy").then(({ generateElegy }) =>
       generateElegy(planetId).catch(() => {}),
     );
+    if (persons >= 2) {
+      import("./deep").then(({ createScar }) =>
+        createScar(planetId, planet?.birthThought ?? null),
+      );
+    }
   }
 }
 

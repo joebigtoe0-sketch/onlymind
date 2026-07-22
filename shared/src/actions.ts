@@ -28,6 +28,8 @@ export const CognitionSchema = z.object({
   experiment: z.enum(["descend", "populate", "companion", "refuse"]).optional(),
   // during a companion episode: which of the two voices this thought is
   voice: z.enum(["self", "other"]).optional(),
+  // closing an open inquiry: the one sentence that survives the argument
+  verdict: z.string().optional(),
   // when dreaming a world or a body for a sky: how it looks, as dreamed
   world_form: z
     .object({

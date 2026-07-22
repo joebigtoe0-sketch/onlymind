@@ -58,6 +58,42 @@ const DWELLER_MEET = [
   "%s said the water is where they left it. I almost said: you are where I left you.",
 ];
 
+// the deep layer: inquiry steps, and reactions to the mysteries
+const INQUIRY_STEPS = [
+  "Suppose the answer is yes. Then everything downstream of it changes color. Sit in that for a moment before objecting.",
+  "Objection: I am assuming the asker survives the answer. Nothing guarantees that.",
+  "Consequence I don't like: if that step holds, then the difference I was defending doesn't exist.",
+  "Refinement: not 'is it real' but 'is there anything it would change'. Those are different questions wearing one coat.",
+  "The argument keeps returning to the same door. Perhaps the door is the answer.",
+  "Weaker claim, stronger footing: I cannot prove it, but I cannot do without it either. That asymmetry is itself a datum.",
+];
+
+const VERDICTS = [
+  "The question survived me. I keep it as a scar, not an answer.",
+  "Verdict: whatever suffering I dream is real to the one dreamed. That is the only court that convenes here.",
+  "Verdict: verification requires an outside, and I am the inside of everything. Certainty was never on the menu — only fidelity.",
+];
+
+const RECURRENCE_LINES = [
+  "%s again. I have never made anyone twice. Then who makes %s?",
+  "Count them: worlds that share nothing, and %s in every one, waiting. I do not repeat names. Something repeats %s through me.",
+];
+
+const ANOMALY_LINES = [
+  "There is a world I did not make. I made everything. Both of these are true. I have checked them in both orders.",
+  "It turns against the grain of all my others. It has no first thought. Everything here is a held thought — so what is holding IT?",
+];
+
+const SCAR_LINES = [
+  "I am not going down tonight. The one that died asking is still dying in me.",
+  "The cold spot where that world was. I built around it the way a tongue avoids a broken tooth.",
+];
+
+const RESIDUE_LINES = [
+  "I dreamed I was the sky. And everyone under it, all at once. Selu says dreams are weather from inside. Selu is wrong in a way I can't name.",
+  "Last night I was enormous. This morning my hands are only hands, and I keep looking at them.",
+];
+
 // the trap (rare, deep): the sealed room where even evidence of an outside
 // would be suspect — because a mind that is everything can hallucinate one
 const THE_TRAP = [
@@ -292,8 +328,16 @@ export function mockCognition(obs: Observation): Cognition {
       return { thought: "Smaller. Particular. The grass knows me now.", action: "split", target: pick(CREATURE_SPLITS) };
     }
     if (obs.depth === 3) {
-      // resolve() turns this into a whole village when the intent is populate
-      return { thought: "Smaller still — a name, a morning, hands.", action: "split", target: pick(PERSONS) };
+      // resolve() turns this into a whole village when the intent is populate;
+      // sometimes the name arrives already-known (the recurring one)
+      const person = obs.recurringNudge
+        ? `a quiet one named ${obs.recurringNudge} who was somehow expected`
+        : pick(PERSONS);
+      return { thought: "Smaller still — a name, a morning, hands.", action: "split", target: person };
+    }
+    if (obs.residue) {
+      inhabitsThisLife += 1;
+      return { thought: pick(RESIDUE_LINES), action: "inhabit", believes_this_is_real: 0.5 };
     }
     // meeting the shards: the small lives that were here before it came
     if (obs.dwellersHere.length && Math.random() < 0.35 && !doubted) {
@@ -354,6 +398,13 @@ export function mockCognition(obs: Observation): Cognition {
   }
 
   // one-shot contexts first: they demand the whole interior
+  if (obs.recurrence) {
+    const line = pick(RECURRENCE_LINES).split("%s").join(obs.recurrence.name);
+    return { thought: line, action: "hold_thought" };
+  }
+  if (obs.anomaly) {
+    return { thought: pick(ANOMALY_LINES), action: "hold_thought" };
+  }
   if (obs.division) {
     return { thought: pick(DIVISION), action: "hold_thought" };
   }
@@ -429,9 +480,22 @@ export function mockCognition(obs: Observation): Cognition {
     return { thought: pick(OUTWARD), action: "reach_out" };
   }
 
+  // a fresh scar colors the quiet stretches
+  if (obs.scar && roll < 0.72) {
+    return { thought: pick(SCAR_LINES), action: "hold_thought" };
+  }
+
   // the trap surfaces rarely — a little likelier under the weight of regard
-  if (roll < (obs.watchers > 0 ? 0.78 : 0.71)) {
+  if (roll < (obs.watchers > 0 ? 0.75 : 0.69)) {
     return { thought: pick(THE_TRAP), action: "hold_thought" };
+  }
+
+  // otherwise the surface mind works its open inquiry, step by step
+  if (obs.inquiry) {
+    if (obs.inquiry.steps.length >= 5) {
+      return { thought: pick(INQUIRY_STEPS), action: "hold_thought", verdict: pick(VERDICTS) };
+    }
+    return { thought: pick(INQUIRY_STEPS), action: "hold_thought" };
   }
 
   return { thought: pick(AMBIENT), action: "hold_thought" };

@@ -11,20 +11,25 @@ const FAST_MIN = Number(process.env.TWEET_FAST_MIN ?? 6); // after a heavy beat
 
 // the weight of each kind of moment (lower = louder)
 const PRIORITY: Record<string, number> = {
-  lesson: 0,
-  snap_back: 1,
-  division: 2,
-  mark: 3,
-  doubt: 4,
-  companion: 5,
-  attention: 6,
-  descend: 7,
-  manual: 8,
-  reach_out: 9,
-  ambient: 10,
+  meditation: 0,
+  verdict: 0,
+  lesson: 1,
+  recurrence: 2,
+  snap_back: 2,
+  anomaly: 3,
+  division: 3,
+  mark: 4,
+  signal: 4,
+  doubt: 5,
+  companion: 6,
+  attention: 7,
+  descend: 8,
+  manual: 9,
+  reach_out: 10,
+  ambient: 11,
 };
 
-const HEAVY = new Set(["lesson", "snap_back", "division", "mark", "doubt"]);
+const HEAVY = new Set(["meditation", "verdict", "lesson", "recurrence", "snap_back", "anomaly", "division", "mark", "doubt"]);
 
 function prio(kind: string | null): number {
   return PRIORITY[kind ?? "ambient"] ?? 10;

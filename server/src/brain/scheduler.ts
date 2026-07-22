@@ -3,9 +3,24 @@ import { currentFragment, mind } from "../sim/mind";
 import { dwellersIn, holders } from "../sim/holders";
 import { resolveCognition } from "../sim/resolve";
 import { episode, episodeDue, episodeOverdue, notePressure } from "../sim/experiments";
+import {
+  activeScar,
+  currentInquiry,
+  ensureInquiry,
+  recurrenceCount,
+  recurringName,
+  residueSurfaces,
+} from "../sim/deep";
 import { queueTransmission } from "../voice/transmissions";
 import { watcherCount } from "../net/ws";
-import { budgetExhausted, callLLM, hasApiKey, spendToday } from "./adapter";
+import {
+  budgetExhausted,
+  callLLM,
+  FRAGMENT_MODEL,
+  hasApiKey,
+  MIND_MODEL,
+  spendToday,
+} from "./adapter";
 import { mockCognition } from "./mock";
 import {
   FRAGMENT_SYSTEM,
@@ -99,7 +114,7 @@ async function cognize() {
     liveCalls += 1;
     const system = obs.depth > 0 ? FRAGMENT_SYSTEM : WHOLE_MIND_SYSTEM;
     const user = obs.depth > 0 ? renderFragmentObservation(obs) : renderObservation(obs);
-    cognition = await callLLM(system, user);
+    cognition = await callLLM(system, user, obs.depth > 0 ? FRAGMENT_MODEL : MIND_MODEL);
     if (!cognition) liveFailures += 1;
   }
   if (!cognition) cognition = mockCognition(obs);
@@ -125,6 +140,8 @@ async function cognize() {
 
   // one-shot contexts become transmissions once they've been felt (§11)
   if (obs.division) queueTransmission(cognition.thought, "division");
+  if (obs.recurrence) queueTransmission(cognition.thought, "recurrence");
+  if (obs.anomaly) queueTransmission(cognition.thought, "anomaly");
   if (obs.justCollapsed) queueTransmission(cognition.thought, "snap_back");
   if (obs.attentionSpike) queueTransmission(cognition.thought, "attention");
   if (obs.companionGone) queueTransmission(cognition.thought, "companion");
@@ -158,6 +175,20 @@ function buildObservation(): Observation {
 
   const companionGone = episode.pendingGrief;
   episode.pendingGrief = null;
+
+  const recurrence = mind.depth === 0 ? mind.pendingRecurrence : null;
+  if (mind.depth === 0) mind.pendingRecurrence = null;
+  const anomaly = mind.depth === 0 ? mind.pendingAnomaly : null;
+  if (mind.depth === 0) mind.pendingAnomaly = null;
+
+  // the open inquiry: always one alive at the surface (quiet contexts only)
+  const inquiryActive =
+    mind.depth === 0 && !mind.reflection && episode.current == null
+      ? ensureInquiry()
+      : currentInquiry();
+
+  const scar = activeScar();
+  const recCount = recurrenceCount();
 
   const companionActive = mind.companion && mind.companion.goneAt == null ? mind.companion : null;
   // alternate voices by exchange count: even = self, odd = the other
@@ -200,6 +231,16 @@ function buildObservation(): Observation {
         : null,
     lessons: mind.depth === 0 ? db.lastLessons(5) : [],
     division: consumeDivision(),
+    inquiry:
+      mind.depth === 0 && inquiryActive
+        ? { question: inquiryActive.question, steps: inquiryActive.steps }
+        : null,
+    recurrence,
+    anomaly,
+    scar: mind.depth === 0 && scar ? { birthThought: scar.birthThought } : null,
+    residue: residueSurfaces(),
+    recurringNudge:
+      mind.depth === 3 && recCount >= 1 && Math.random() < 0.3 ? recurringName() : null,
     shardCount: mind.depth === 0 ? holders.dwellers.length : 0,
     dwellersHere:
       mind.depth > 0 && mind.activePlanetId

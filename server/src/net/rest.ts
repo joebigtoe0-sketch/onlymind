@@ -5,6 +5,7 @@ import { mind } from "../sim/mind";
 import { fragmentsForPlanet, getElegy, kvGet, kvSet, listTransmissions, visionsForPlanet } from "../db/store";
 import { holders } from "../sim/holders";
 import { brainStatus } from "../brain/scheduler";
+import { activeScar, currentInquiry, recurrenceCount } from "../sim/deep";
 import { queueTransmission } from "../voice/transmissions";
 import { visionStatus } from "../voice/visions";
 import type { PlanetLog } from "../../../shared/src/protocol";
@@ -34,6 +35,12 @@ restRouter.get("/health", (_req, res) => {
     companion: mind.companion?.name ?? null,
     brain: brainStatus(),
     visions: visionStatus(),
+    deep: {
+      inquiry: currentInquiry()?.question ?? null,
+      inquirySteps: currentInquiry()?.steps.length ?? 0,
+      scar: activeScar() != null,
+      recurring: recurrenceCount(),
+    },
     uptimeSec: Math.round((Date.now() - bootAt) / 1000),
   });
 });
@@ -178,6 +185,17 @@ adminRouter.post("/tweet", async (_req, res) => {
     return;
   }
   res.json({ ok: true, ...t });
+});
+
+adminRouter.post("/anomaly", async (_req, res) => {
+  const { spawnAnomaly } = await import("../sim/deep");
+  res.json({ ok: true, planetId: spawnAnomaly() });
+});
+
+adminRouter.post("/meditate", async (_req, res) => {
+  const { generateMeditation } = await import("../voice/meditations");
+  const text = await generateMeditation();
+  res.json({ ok: true, text: text?.slice(0, 200) });
 });
 
 adminRouter.post("/snapback", (_req, res) => {

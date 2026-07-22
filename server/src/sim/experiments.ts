@@ -46,7 +46,23 @@ export function chooseExperiment(): ExperimentType {
       return nudged as ExperimentType;
     }
   }
+  // a fresh scar makes it flinch from the deep trips
+  const scarred = db.kvGet("scar")
+    ? (() => {
+        try {
+          return Date.now() < (JSON.parse(db.kvGet("scar")!) as { until: number }).until;
+        } catch {
+          return false;
+        }
+      })()
+    : false;
   const r = Math.random();
+  if (scarred) {
+    if (r < 0.15) return "descend";
+    if (r < 0.25) return "populate";
+    if (r < 0.5) return "companion";
+    return "refuse";
+  }
   if (r < 0.4) return "descend";
   if (r < 0.65) return "populate";
   if (r < 0.85) return "companion";

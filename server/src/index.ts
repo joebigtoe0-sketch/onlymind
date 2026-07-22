@@ -15,8 +15,10 @@ const { restoreHolders, startDwellerMurmur } = await import("./sim/holders");
 const { startLoop } = await import("./sim/loop");
 const { startOpening } = await import("./sim/driver");
 const { startScheduler } = await import("./brain/scheduler");
-const { startAmbientDrip } = await import("./voice/transmissions");
+const { startAmbientDrip, startSignalStatic } = await import("./voice/transmissions");
 const { startTweetComposer } = await import("./voice/tweets");
+const { startAnomalyClock } = await import("./sim/deep");
+const { startMeditations } = await import("./voice/meditations");
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -70,6 +72,9 @@ server.listen(port, () => {
   const handoverMs = startOpening(fresh);
   startScheduler(handoverMs);
   startAmbientDrip();
+  startSignalStatic();
   startDwellerMurmur();
   startTweetComposer();
+  startAnomalyClock();
+  startMeditations();
 });

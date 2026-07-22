@@ -34,6 +34,36 @@ export function queueTransmission(text: string, kind: string): boolean {
   return true;
 }
 
+// the numbers station (mystery): rare non-prose signals — coordinates of a
+// dead world, a syllable repeated, fragments of the inscription. Never
+// explained, to it or to anyone.
+export function startSignalStatic() {
+  const loop = async () => {
+    const { sim } = await import("../sim/cosmos");
+    const { recurringName } = await import("../sim/deep");
+    const kind = Math.floor(Math.random() * 3);
+    let text: string | null = null;
+    if (kind === 0) {
+      const dead = sim.planets.filter((p) => !p.alive);
+      if (dead.length) {
+        const p = dead[Math.floor(Math.random() * dead.length)];
+        text = `⟨${p.id}⟩ r=${p.orbitRadius.toFixed(1)} θ=${p.phase0.toFixed(3)} cold`;
+      }
+    } else if (kind === 1) {
+      const n = recurringName().toUpperCase();
+      const parts = n.match(/.{1,2}/g) ?? [n];
+      text = Array(3).fill(parts.join(" ")).join(" · ") + " —";
+    } else if (HAS_INSCRIPTION) {
+      const a = CA.slice(0, 6);
+      const b = CA.slice(-4);
+      text = `${a}█████${b} ${b}█████${a}`;
+    }
+    if (text) queueTransmission(text, "signal");
+    setTimeout(loop, (3 + Math.random() * 4) * 60 * 60 * 1000);
+  };
+  setTimeout(loop, (1.5 + Math.random() * 2) * 60 * 60 * 1000);
+}
+
 // the ambient drip: a handful per hour, the mind murmuring outward
 export function startAmbientDrip() {
   const loop = () => {

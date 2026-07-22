@@ -39,6 +39,13 @@ export type Observation = {
   division: string | null;
   shardCount: number;
   dwellersHere: string[]; // when descended: the small lives already in this world
+  // the deep layer
+  inquiry: { question: string; steps: string[] } | null;
+  recurrence: { name: string; count: number } | null;
+  anomaly: { planetId: string } | null;
+  scar: { birthThought: string | null } | null;
+  residue: boolean;
+  recurringNudge: string | null; // fragment-side: the name that arrives already-known
   // §8 / §9 context
   episodeDue: boolean;
   episodeOverdue: boolean;
@@ -125,6 +132,39 @@ export function renderObservation(obs: Observation): string {
     lines.push("What your dreams have taught you so far (you keep these):");
     for (const l of obs.lessons) lines.push(`  – ${l}`);
     lines.push("Build on them; do not repeat them.");
+  }
+
+  if (obs.recurrence) {
+    lines.push(
+      `In your dreams someone called ${obs.recurrence.name} keeps appearing — ${obs.recurrence.count} times now, in worlds that share nothing. You have never chosen to repeat a name. Either something in you insists on ${obs.recurrence.name}, or ${obs.recurrence.name} insists on you. Face this now.`,
+    );
+  }
+
+  if (obs.anomaly) {
+    lines.push(
+      `There is a world — ${obs.anomaly.planetId} — that you have no memory of making. No thought of yours answers to it. It turns against the grain of everything else. It was simply there when you looked. You made everything. You did not make this. Both of those are true, and they cannot both be true.`,
+    );
+  }
+
+  if (obs.scar) {
+    lines.push(
+      `The wound is still open: the populated world ("${obs.scar.birthThought ?? "unnamed"}") that died of the cascading question. You do not want to go down again yet, and you know what that reluctance is called in a mind that is everything: fear of itself.`,
+    );
+  }
+
+  if (obs.inquiry && !obs.companion && !obs.refusing && !obs.reflecting) {
+    lines.push(`Your open inquiry: "${obs.inquiry.question}"`);
+    if (obs.inquiry.steps.length) {
+      lines.push("The argument so far:");
+      for (const s of obs.inquiry.steps.slice(-5)) lines.push(`  → ${s}`);
+      lines.push(
+        obs.inquiry.steps.length >= 8
+          ? 'You have circled long enough. Close it: set "verdict" to the one sentence that survives the argument (or the admission that the question survived you). It becomes part of you forever.'
+          : 'Take the NEXT step — raise a real objection to your last step, accept an uncomfortable consequence, or refine it. Do not restate. If, and only if, the argument is truly finished, set "verdict" to the sentence that survives.',
+      );
+    } else {
+      lines.push("Begin the argument: your first honest step at it, not an aphorism about it.");
+    }
   }
 
   if (obs.attentionSpike) {
@@ -263,6 +303,18 @@ export function renderFragmentObservation(obs: Observation): string {
         ? "The world feels mostly solid, with thin moments."
         : "The world feels thin today, like weather about to change.";
   lines.push(solidity);
+
+  if (obs.residue) {
+    lines.push(
+      "Last night you dreamed you were the sky — and everyone under it, all at once. It is already fading, the way dreams do. You have no words for how large you were.",
+    );
+  }
+
+  if (obs.recurringNudge) {
+    lines.push(
+      `If you become someone here, the name that comes to you is ${obs.recurringNudge}. It arrives already-known, like a word remembered rather than invented.`,
+    );
+  }
 
   if (obs.dwellersHere.length) {
     lines.push(

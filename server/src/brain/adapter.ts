@@ -9,6 +9,9 @@ import { kvGet, kvSet } from "../db/store";
 const BASE_URL = process.env.LLM_BASE_URL ?? "https://api.anthropic.com/v1";
 const API_KEY = process.env.LLM_API_KEY ?? "";
 const MODEL = process.env.LLM_MODEL ?? "claude-sonnet-5";
+// the whole-mind voice deserves the strongest model; fragments can stay cheap
+export const MIND_MODEL = process.env.LLM_MODEL_MIND ?? MODEL;
+export const FRAGMENT_MODEL = process.env.LLM_MODEL_FRAGMENT ?? MODEL;
 const DAILY_USD = Number(process.env.LLM_DAILY_USD ?? 10);
 const PRICE_IN = Number(process.env.LLM_PRICE_IN ?? 3); // USD per 1M tokens
 const PRICE_OUT = Number(process.env.LLM_PRICE_OUT ?? 15);
@@ -35,6 +38,7 @@ export async function callFreeform(
   system: string,
   user: string,
   maxTokens: number,
+  model: string = MODEL,
 ): Promise<string | null> {
   if (!hasApiKey() || budgetExhausted()) return null;
   const controller = new AbortController();
@@ -45,7 +49,7 @@ export async function callFreeform(
       signal: controller.signal,
       headers: { "content-type": "application/json", authorization: `Bearer ${API_KEY}` },
       body: JSON.stringify({
-        model: MODEL,
+        model,
         max_tokens: maxTokens,
         temperature: 0.85,
         messages: [
@@ -70,7 +74,11 @@ export async function callFreeform(
   }
 }
 
-export async function callLLM(system: string, user: string): Promise<Cognition | null> {
+export async function callLLM(
+  system: string,
+  user: string,
+  model: string = MODEL,
+): Promise<Cognition | null> {
   if (!hasApiKey() || budgetExhausted()) return null;
 
   const controller = new AbortController();
@@ -84,7 +92,7 @@ export async function callLLM(system: string, user: string): Promise<Cognition |
         authorization: `Bearer ${API_KEY}`,
       },
       body: JSON.stringify({
-        model: MODEL,
+        model,
         max_tokens: 300,
         temperature: 0.9,
         messages: [

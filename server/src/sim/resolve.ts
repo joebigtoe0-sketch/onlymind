@@ -31,8 +31,18 @@ import {
   noteRefusalRound,
   startEpisode,
 } from "./experiments";
+import { closeInquiry, noteRecurrenceIfNamed, stepInquiry } from "./deep";
 import { queueTransmission } from "../voice/transmissions";
 import * as db from "../db/store";
+
+// rarely, the mind withholds a thought — the archive shows only the blocks
+function maybeRedact(text: string): string {
+  if (Math.random() >= 0.015) return text;
+  return text
+    .split(" ")
+    .map((w) => "█".repeat(Math.max(2, Math.min(9, w.length))))
+    .join(" ");
+}
 
 // its own kinds — nothing here has ever heard of humans
 const VILLAGERS = [
@@ -69,9 +79,11 @@ export function resolveCognition(c: Cognition) {
           // the populated world (§8): many lives at once
           const village = VILLAGERS[Math.floor(Math.random() * VILLAGERS.length)];
           splitVillage(village);
+          for (const v of village) noteRecurrenceIfNamed(v);
           if (planetId) maybePaintVision(planetId, `${village.join("; ")}. ${text}`);
         } else if (canSplit() && c.target) {
           split(c.target);
+          noteRecurrenceIfNamed(c.target);
           // the deep moments get painted: always the person/species (depth 4),
           // sometimes the creature (depth 3) — never the world's first thought
           if (planetId && mind.depth === 4) {
@@ -194,8 +206,11 @@ export function resolveCognition(c: Cognition) {
     }
 
     default: {
-      // hold_thought (and stray split/inhabit at the surface)
-      record(text, sim.focus.planetId);
+      // hold_thought (and stray split/inhabit at the surface).
+      // Surface thinking advances the open inquiry; a verdict closes it.
+      record(maybeRedact(text), sim.focus.planetId);
+      stepInquiry(text);
+      if (c.verdict && c.verdict.trim()) closeInquiry(c.verdict.trim());
       if (sim.focus.planetId) recur(sim.focus.planetId, 0.05);
     }
   }
