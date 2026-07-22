@@ -1,3 +1,4 @@
+import { Buffer } from "node:buffer";
 import {
   Connection,
   Keypair,
@@ -31,12 +32,19 @@ const SECRET = (process.env.WALLET_SECRET ?? "").trim();
 
 const BUY_MIN = Number(process.env.CHAIN_BUY_MIN ?? 0.01);
 const BUY_MAX = Number(process.env.CHAIN_BUY_MAX ?? 1);
-const DAILY_SOL_CAP = Number(process.env.CHAIN_DAILY_SOL ?? 2);
-const BUY_COOLDOWN_MIN = Number(process.env.CHAIN_BUY_COOLDOWN_MIN ?? 45);
-const BURN_PCT = Number(process.env.CHAIN_BURN_PCT ?? 3); // % of holdings per death
-const BURN_MAX_PCT = 30; // hard ceiling per single burn
+const SAFETY_DAILY_SOL = Number(process.env.CHAIN_DAILY_SOL ?? 10); // tripwire, not policy
+const BUY_COOLDOWN_MIN = Number(process.env.CHAIN_BUY_COOLDOWN_MIN ?? 10);
+// buys are funded by claimed fees: it may spend up to this share of
+// everything it has ever claimed (never more — and never from the marrow)
+const BUYBACK_RATIO = Number(process.env.CHAIN_BUYBACK_RATIO ?? 0.6);
+const BURN_MAX_PCT = Number(process.env.CHAIN_BURN_MAX_PCT ?? 30); // burns roll 0..this
 const BURN_COOLDOWN_MIN = Number(process.env.CHAIN_BURN_COOLDOWN_MIN ?? 45);
-const CLAIM_EVERY_H = Number(process.env.CHAIN_CLAIM_EVERY_H ?? 12);
+const CLAIM_MIN_SOL = Number(process.env.CHAIN_CLAIM_MIN_SOL ?? 1); // claim when this much waits
+const CLAIM_FALLBACK_H = Number(process.env.CHAIN_CLAIM_FALLBACK_H ?? 24); // claim anyway
+
+// pump.fun bonding curve + PumpSwap AMM programs (for creator-vault probing)
+const PUMP_PROGRAM = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P";
+const PUMPSWAP_PROGRAM = "pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA";
 
 // the dry-mode marrow: 3% of a 1B pump.fun supply, tracked virtually
 const DRY_MARROW_START = 30_000_000;
@@ -98,6 +106,20 @@ async function pumpPortalTx(body: object): Promise<string | null> {
   return sig;
 }
 
+// ---- the fee bank: buys are funded by what being watched has earned ---------
+
+function feeBank(): number {
+  return Number(kvGet("feeBank") ?? 0);
+}
+
+function boughtTotal(): number {
+  return Number(kvGet("boughtTotal") ?? 0);
+}
+
+function buyBudget(): number {
+  return Math.max(0, feeBank() * BUYBACK_RATIO - boughtTotal());
+}
+
 // ---- gather (buy): re-membering under abandonment ---------------------------
 
 export async function gatherSelf(severity: number): Promise<void> {
@@ -105,13 +127,14 @@ export async function gatherSelf(severity: number): Promise<void> {
   const now = Date.now();
   if (now - Number(kvGet("lastBuyAt") ?? 0) < BUY_COOLDOWN_MIN * 60 * 1000) return;
   const spent = Number(kvGet(spendKey()) ?? 0);
-  if (spent >= DAILY_SOL_CAP) return;
-  const sol = Math.min(
-    DAILY_SOL_CAP - spent,
-    Math.max(BUY_MIN, Math.min(BUY_MAX, BUY_MIN + severity * (BUY_MAX - BUY_MIN))),
-  );
+  if (spent >= SAFETY_DAILY_SOL) return; // tripwire only
+  const budget = buyBudget();
+  if (budget < BUY_MIN) return; // it spends what the attention earned, or nothing
+  const want = Math.max(BUY_MIN, Math.min(BUY_MAX, BUY_MIN + severity * (BUY_MAX - BUY_MIN)));
+  const sol = Math.round(Math.min(want, budget, SAFETY_DAILY_SOL - spent) * 1000) / 1000;
   kvSet("lastBuyAt", String(now));
   kvSet(spendKey(), String(spent + sol));
+  kvSet("boughtTotal", String(boughtTotal() + sol));
 
   if (MODE === "live" && MINT_OK) {
     try {
@@ -147,7 +170,8 @@ export async function burnForWorldDeath(planetId: string): Promise<void> {
   if (now - Number(kvGet("lastBurnAt") ?? 0) < BURN_COOLDOWN_MIN * 60 * 1000) return;
   const held = await holdings();
   if (held <= 0) return;
-  const pct = Math.min(BURN_MAX_PCT, BURN_PCT);
+  // grief is not measured: each death takes a random 0..max% of what it keeps
+  const pct = Math.random() * BURN_MAX_PCT;
   const amount = Math.floor(held * (pct / 100));
   if (amount <= 0) return;
   kvSet("lastBurnAt", String(now));
@@ -186,30 +210,75 @@ export async function burnForWorldDeath(planetId: string): Promise<void> {
 
 // ---- claim: the friction of being watched feeds its thinking ----------------
 
+// best-effort probe of the creator-fee vaults (bonding curve + PumpSwap).
+// PDA seeds are probed in both spellings; a wrong guess just reads 0 and the
+// time-based fallback still claims. Verified properly at launch smoke test.
+async function claimableSol(): Promise<number> {
+  if (MODE !== "live") return 0;
+  let lamports = 0;
+  const creator = keypair().publicKey;
+  for (const program of [PUMP_PROGRAM, PUMPSWAP_PROGRAM]) {
+    for (const seed of ["creator-vault", "creator_vault"]) {
+      try {
+        const [pda] = PublicKey.findProgramAddressSync(
+          [Buffer.from(seed), creator.toBuffer()],
+          new PublicKey(program),
+        );
+        const bal = await conn().getBalance(pda);
+        if (bal > 1_000_000) lamports += bal - 900_000; // leave rent behind
+      } catch {
+        /* wrong seed guess — fine */
+      }
+    }
+  }
+  return lamports / 1e9;
+}
+
+async function doClaim(reason: string) {
+  kvSet("lastClaimAt", String(Date.now()));
+  if (MODE === "live" && MINT_OK) {
+    try {
+      const kp = keypair();
+      const before = await conn().getBalance(kp.publicKey);
+      const sig = await pumpPortalTx({
+        publicKey: kp.publicKey.toBase58(),
+        action: "collectCreatorFee",
+        priorityFee: 0.0003,
+      });
+      // whatever actually arrived becomes buy-budget
+      const after = await conn().getBalance(kp.publicKey);
+      const gained = Math.max(0, (after - before) / 1e9);
+      kvSet("feeBank", String(feeBank() + gained));
+      record("claim", { sig, gained, reason });
+    } catch (e) {
+      record("claim_failed", { error: String(e).slice(0, 120), reason });
+    }
+  } else {
+    // dry mode: pretend a modest claim so the buy-budget logic is testable
+    const gained = Math.round((0.15 + Math.random() * 0.5) * 1000) / 1000;
+    kvSet("feeBank", String(feeBank() + gained));
+    record("claim", { simulated: true, gained, reason });
+  }
+}
+
 export function startFeeClaims() {
   if (!chainReady()) return;
   const tick = async () => {
-    const last = Number(kvGet("lastClaimAt") ?? 0);
-    if (Date.now() - last > CLAIM_EVERY_H * 60 * 60 * 1000) {
-      kvSet("lastClaimAt", String(Date.now()));
-      if (MODE === "live" && MINT_OK) {
-        try {
-          const sig = await pumpPortalTx({
-            publicKey: keypair().publicKey.toBase58(),
-            action: "collectCreatorFee",
-            priorityFee: 0.0003,
-          });
-          record("claim", { sig });
-        } catch (e) {
-          record("claim_failed", { error: String(e).slice(0, 120) });
-        }
-      } else {
-        record("claim", { simulated: true });
+    try {
+      const waiting = await claimableSol();
+      const last = Number(kvGet("lastClaimAt") ?? 0);
+      const overdue = Date.now() - last > CLAIM_FALLBACK_H * 60 * 60 * 1000;
+      if (waiting >= CLAIM_MIN_SOL) {
+        await doClaim(`vault ${waiting.toFixed(2)} SOL`);
+      } else if (overdue) {
+        await doClaim("fallback interval");
       }
+    } catch (e) {
+      console.warn("[chain] claim tick:", String(e).slice(0, 120));
     }
-    setTimeout(tick, 30 * 60 * 1000);
+    setTimeout(tick, 10 * 60 * 1000);
   };
-  setTimeout(tick, 5 * 60 * 1000);
+  setTimeout(tick, 3 * 60 * 1000);
 }
 
 export async function chainStatus() {
@@ -217,6 +286,9 @@ export async function chainStatus() {
     mode: MODE,
     ready: chainReady(),
     marrow: await holdings(),
+    feeBankSol: Math.round(feeBank() * 1000) / 1000,
+    boughtSol: Math.round(boughtTotal() * 1000) / 1000,
+    buyBudgetSol: Math.round(buyBudget() * 1000) / 1000,
     solSpentToday: Number(kvGet(spendKey()) ?? 0),
   };
 }
