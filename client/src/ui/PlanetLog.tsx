@@ -75,7 +75,7 @@ export function PlanetLog() {
               <div className="log-divider" />
               <div className="log-list-label">what it saw there</div>
               <div className="log-visions">
-                {log.visions.map((v) => (
+                {[...log.visions].reverse().map((v) => (
                   <figure key={v.id}>
                     <img src={v.url} alt="" loading="lazy" />
                     <figcaption>{v.text}</figcaption>
@@ -87,7 +87,7 @@ export function PlanetLog() {
           <div className="log-divider" />
           <div className="log-list-label">every thought held here</div>
           <ol className="log-list">
-            {log.thoughts.map((t) => (
+            {[...log.thoughts].reverse().map((t) => (
               <li key={t.id}>
                 <span className="log-t">{sinceIgnition(t.at, log.ignitionAt)}</span>
                 <span className="log-text">{t.text}</span>
