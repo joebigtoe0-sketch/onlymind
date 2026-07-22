@@ -1,6 +1,6 @@
 import type { WorldForm } from "../../../shared/src/cosmos";
 import { birth, ignite, makePlanet, recur, sanitizeForm, sim, think } from "./cosmos";
-import { callFreeform, hasApiKey } from "../brain/adapter";
+import { callFreeform, hasApiKey, MIND_MODEL } from "../brain/adapter";
 
 // The power-on (§5): the first minute of a fresh mind is a composed sequence —
 // ignition, first worlds, the opening monologue. With a live brain the words
@@ -65,7 +65,7 @@ async function composeOpening(): Promise<ComposedOpening | null> {
   if ((process.env.BRAIN_MODE ?? "mock") === "mock" || !hasApiKey()) return null;
   try {
     const raw = await Promise.race([
-      callFreeform(COMPOSER_SYSTEM, "The light is about to appear. Compose the opening now.", 900),
+      callFreeform(COMPOSER_SYSTEM, "The light is about to appear. Compose the opening now.", 900, MIND_MODEL),
       new Promise<null>((r) => setTimeout(() => r(null), 14000)),
     ]);
     if (!raw) return null;

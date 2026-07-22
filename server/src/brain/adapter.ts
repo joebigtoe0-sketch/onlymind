@@ -12,6 +12,15 @@ const MODEL = process.env.LLM_MODEL ?? "claude-sonnet-5";
 // the whole-mind voice deserves the strongest model; fragments can stay cheap
 export const MIND_MODEL = process.env.LLM_MODEL_MIND ?? MODEL;
 export const FRAGMENT_MODEL = process.env.LLM_MODEL_FRAGMENT ?? MODEL;
+
+// reasoning-family models (gpt-5*, o1/o3/o4...) reject `temperature` and use
+// `max_completion_tokens`; keep their thinking short — our outputs are small
+function bodyFor(model: string, maxTokens: number, temperature: number) {
+  if (/^(gpt-5|o\d)/i.test(model)) {
+    return { model, max_completion_tokens: maxTokens + 400, reasoning_effort: "low" };
+  }
+  return { model, max_tokens: maxTokens, temperature };
+}
 const DAILY_USD = Number(process.env.LLM_DAILY_USD ?? 10);
 const PRICE_IN = Number(process.env.LLM_PRICE_IN ?? 3); // USD per 1M tokens
 const PRICE_OUT = Number(process.env.LLM_PRICE_OUT ?? 15);
@@ -49,9 +58,7 @@ export async function callFreeform(
       signal: controller.signal,
       headers: { "content-type": "application/json", authorization: `Bearer ${API_KEY}` },
       body: JSON.stringify({
-        model,
-        max_tokens: maxTokens,
-        temperature: 0.85,
+        ...bodyFor(model, maxTokens, 0.85),
         messages: [
           { role: "system", content: system },
           { role: "user", content: user },
@@ -92,9 +99,7 @@ export async function callLLM(
         authorization: `Bearer ${API_KEY}`,
       },
       body: JSON.stringify({
-        model,
-        max_tokens: 300,
-        temperature: 0.9,
+        ...bodyFor(model, 300, 0.9),
         messages: [
           { role: "system", content: system },
           { role: "user", content: user },
