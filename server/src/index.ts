@@ -25,9 +25,13 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 function loadDotEnv(file: string) {
   try {
     for (const line of fs.readFileSync(file, "utf8").split("\n")) {
-      const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
+      const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)$/);
       if (m && process.env[m[1]] === undefined) {
-        process.env[m[1]] = m[2].replace(/^["']|["']$/g, "");
+        const value = m[2]
+          .replace(/\s+#.*$/, "") // inline comments
+          .trim()
+          .replace(/^["']|["']$/g, "");
+        process.env[m[1]] = value;
       }
     }
   } catch {
