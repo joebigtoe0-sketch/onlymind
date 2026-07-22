@@ -408,7 +408,7 @@ export function mockCognition(obs: Observation): Cognition {
 
   const roll = Math.random();
 
-  if (roll < 0.1 && obs.planets.length < 12) {
+  if (roll < 0.1) {
     return { thought: pick(DREAMS), action: "dream_world", world_form: mockForm() };
   }
 

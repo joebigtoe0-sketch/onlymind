@@ -84,8 +84,8 @@ export function addHolders(n: number): { worlds: number; dwellers: number } {
     const roomy = living.filter(
       (p) => holders.dwellers.filter((d) => d.planetId === p.id).length < MAX_DWELLERS_PER_WORLD,
     );
-    const wantWorld = roomy.length === 0 || (Math.random() < 0.3 && living.length < 42);
-    if (wantWorld && living.length < 42) {
+    const wantWorld = roomy.length === 0 || Math.random() < 0.3;
+    if (wantWorld) {
       const thought =
         SHARD_WORLD_THOUGHTS[Math.floor(Math.random() * SHARD_WORLD_THOUGHTS.length)];
       const form = SHARD_FORMS[Math.floor(Math.random() * SHARD_FORMS.length)];

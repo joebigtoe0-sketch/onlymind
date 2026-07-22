@@ -45,8 +45,8 @@ const VILLAGERS = [
 // again captures the mind's focus. Descent is chosen: the mind enters a world
 // and divides until something inside it asks the question that ends it.
 
-const MAX_PLANETS = 42; // top-level worlds; the cosmos is allowed to get massive
-const MAX_SATELLITES = 4; // per world
+// no cap on worlds — the cosmos grows as long as the mind keeps making
+const MAX_SATELLITES = 4; // per world, so skies stay legible
 const recentReturns: string[] = [];
 
 // every thought is stamped with the depth it was thought at — this is the
@@ -148,10 +148,6 @@ export function resolveCognition(c: Cognition) {
 
   switch (c.action) {
     case "dream_world": {
-      if (sim.planets.filter((p) => p.alive && p.parentId == null).length >= MAX_PLANETS) {
-        record(text, null);
-        break;
-      }
       const p = makePlanet(text, null, sanitizeForm(c.world_form));
       birth(p);
       record(text, p.id);

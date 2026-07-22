@@ -149,7 +149,10 @@ export function Planet({ seed }: { seed: PlanetData }) {
         visible={false}
         onClick={(e) => {
           e.stopPropagation();
-          select(seed.id);
+          // a deliberate click overrides auto-follow: the spectator takes over
+          const st = useCosmos.getState();
+          if (st.followMind) st.setFollow(false);
+          st.select(seed.id);
         }}
         onPointerOver={(e) => {
           e.stopPropagation();
