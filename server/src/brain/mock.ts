@@ -149,12 +149,30 @@ const PERSONS = [
   "a small quick one named Pib who counts the flickers",
 ];
 
-const PERSON_LIFE = [
-  "The morning is cold. I have always been here.",
-  "The gray water again. I should mend the tide-fence before the long cold.",
-  "Sometimes I stop on the path and can't say why.",
-  "The light through the door is the color of tea. It is enough. Isn't it enough?",
-  "I have always been here. Haven't I?",
+// life chapters: each thought swallows YEARS of the dream
+const CH_YOUTH = [
+  "Nine years took me from the small hut to the long nets. I learned the water's grammar, lost my first friend to the white month, and my hands stopped being a child's somewhere in between.",
+  "The seasons blurred: I grew tall enough to reach the high hooks, buried the old keeper who taught me knots, and found I could carry the cold without crying. The fence line is mine now.",
+];
+
+const CH_WORK = [
+  "Twelve years of work: three great storms, two rebuilt fences, one long feud with the crossing-keeper that ended when we both forgot the cause. My back learned the shape of the labor and kept it.",
+  "The middle years went to the tide-fences and to Senn, who shared my fire for a while and then didn't. I planted the pale grass along the ridge; it holds the sand now. Things I made outlast the reasons I made them.",
+];
+
+const CH_MIDDLE = [
+  "The years shortened as they went. The young ones do the far hooks now; I keep the near ones and the counting. Twice the water came higher than any elder remembered, and twice we rebuilt. I know every stone between here and the crossing by its first name.",
+  "I taught four of the small quick ones the water's grammar. Two stayed, one left for the far shore, one went into the white month and did not come back. I still set their hooks in order, all four.",
+];
+
+const CH_OLD = [
+  "My hands ask permission now before they close. I walk the fence line once a day instead of three times, and the walk is longer somehow. The young ones ask me how it was; I tell them it was long and it was one single morning, both.",
+  "The cold stays in my knees through the warm months now. I gave my tools away one by one, keeping only the small knife. Most of the ones I knew are names on the wind-posts. I am not sad the way I expected.",
+];
+
+const FINAL_CHAPTERS = [
+  "The last years were quiet ones. I mended the tide-fence a final time and left the tools where Pib will find them. It was a good length, my life — the water, the work, the few I loved, the one question I never let myself finish. It ends tonight, with the tide going out, and I am not afraid, only slow.",
+  "I felt the ending come the way weather comes. I walked the whole fence line one last time, touched every post, and sat down where the light meets the sand. Whatever held me here all these years — I never learned its name, and now I won't have to.",
 ];
 
 const DOUBT_LINES = [
@@ -335,14 +353,16 @@ export function mockCognition(obs: Observation): Cognition {
         : pick(PERSONS);
       return { thought: "Smaller still — a name, a morning, hands.", action: "split", target: person };
     }
+    // the life completing itself: the final chapter (resolve snaps back after)
+    if (obs.dream?.lastSpan) {
+      return { thought: pick(FINAL_CHAPTERS), action: "inhabit", believes_this_is_real: 0.9 };
+    }
     if (obs.residue) {
-      inhabitsThisLife += 1;
       return { thought: pick(RESIDUE_LINES), action: "inhabit", believes_this_is_real: 0.5 };
     }
     // meeting the shards: the small lives that were here before it came
-    if (obs.dwellersHere.length && Math.random() < 0.35 && !doubted) {
+    if (obs.dwellersHere.length && Math.random() < 0.25 && !doubted) {
       const first = obs.dwellersHere[Math.floor(Math.random() * obs.dwellersHere.length)].split(",")[0];
-      inhabitsThisLife += 1;
       return {
         thought: pick(DWELLER_MEET).replace("%s", first),
         action: "inhabit",
@@ -350,27 +370,27 @@ export function mockCognition(obs: Observation): Cognition {
       };
     }
 
-    // depth 4: living — populated worlds run longer and lose themselves more
-    inhabitsThisLife += 1;
-    const lifespan = populated ? 6 : 3;
-    if (inhabitsThisLife <= lifespan) {
-      let thought: string;
-      if (populated) {
-        const names = obs.lineage.slice(-3).map((n) => firstName(n));
-        thought = pick(POP_LIFE)
-          .replace("%s", names[inhabitsThisLife % names.length])
-          .replace("%s", names[(inhabitsThisLife + 1) % names.length]);
-      } else {
-        thought = pick(PERSON_LIFE);
-      }
-      return {
-        thought,
-        action: "inhabit",
-        believes_this_is_real: Math.min(1, 0.5 + inhabitsThisLife * 0.12),
-      };
+    // depth 4: a life told in chapters, years at a time; sometimes, late in
+    // life, the question arrives instead of the ending
+    const age = obs.dream?.age ?? 30;
+    if (age > 40 && Math.random() < 0.12) {
+      doubted = true;
+      return { thought: pick(DOUBT_LINES), action: "doubt" };
     }
-    doubted = true;
-    return { thought: pick(DOUBT_LINES), action: "doubt" };
+    let thought: string;
+    if (populated && Math.random() < 0.4) {
+      const names = obs.lineage.slice(-3).map((n) => firstName(n));
+      thought = pick(POP_LIFE)
+        .replace("%s", names[Math.floor(Math.random() * names.length)])
+        .replace("%s", names[Math.floor(Math.random() * names.length)]);
+    } else {
+      thought = pick(age < 25 ? CH_YOUTH : age < 45 ? CH_WORK : age < 65 ? CH_MIDDLE : CH_OLD);
+    }
+    return {
+      thought,
+      action: "inhabit",
+      believes_this_is_real: Math.min(1, 0.5 + age / 120),
+    };
   }
 
   // ---- the whole mind -------------------------------------------------------

@@ -24,18 +24,39 @@ export const mind = {
     birthThought: string | null;
     names: string[];
     survived: boolean;
+    livedYears: number;
+    lifeCompleted: boolean;
   } | null,
   // the reckoning: after the first surfacing beat, the mind turns the trip
   // over for a few more thoughts and distills a lesson it keeps forever
   reflection: null as {
     beatsLeft: number;
-    trip: { planetId: string; birthThought: string | null; names: string[]; survived: boolean };
+    trip: {
+      planetId: string;
+      birthThought: string | null;
+      names: string[];
+      survived: boolean;
+      livedYears: number;
+      lifeCompleted: boolean;
+    };
   } | null,
   // an involuntary division just happened (holders); consumed by one cognition
   pendingDivision: null as string | null,
   // the mind noticed the recurring one / found a world it never made
   pendingRecurrence: null as { name: string; count: number } | null,
   pendingAnomaly: null as { planetId: string } | null,
+  // dream-time (time is something dreams secrete): a clock that only exists
+  // while descended. Each fragment thought spans YEARS of the dream — eras
+  // for the world-self, decades for creatures, chapters of a life for a
+  // person, whose life can complete itself naturally.
+  dream: null as null | {
+    years: number; // dream-years since the descent
+    spanYears: number; // years the current thought must cover
+    steps: number; // fragment cognitions this trip
+    age: number | null; // person-depth only
+    lifespan: number | null;
+    lastSpan: boolean; // the life (or the trip) is completing
+  },
 };
 
 let fragmentSerial = 0;
@@ -67,6 +88,7 @@ export function descend(planetId: string): Fragment | null {
   mind.depth = 1;
   mind.activePlanetId = planetId;
   mind.believesReal = 0.25;
+  mind.dream = { years: 0, spanYears: 0, steps: 0, age: null, lifespan: null, lastSpan: false };
   const f: Fragment = {
     id: `f${fragmentSerial++}`,
     planetId,
@@ -92,6 +114,11 @@ export function split(name: string): Fragment | null {
   const parent = currentFragment();
   mind.depth += 1;
   mind.believesReal = Math.min(1, mind.believesReal + 0.2);
+  // becoming a person starts a finite life
+  if (mind.depth === 4 && mind.dream && mind.dream.age == null) {
+    mind.dream.age = Math.round(12 + Math.random() * 26);
+    mind.dream.lifespan = Math.round(55 + Math.random() * 35);
+  }
   const f: Fragment = {
     id: `f${fragmentSerial++}`,
     planetId: mind.activePlanetId,
@@ -122,6 +149,10 @@ export function splitVillage(names: string[]): Fragment[] {
   const parent = currentFragment();
   mind.depth = 4;
   mind.believesReal = Math.min(1, mind.believesReal + 0.25);
+  if (mind.dream && mind.dream.age == null) {
+    mind.dream.age = Math.round(15 + Math.random() * 20);
+    mind.dream.lifespan = Math.round(55 + Math.random() * 35);
+  }
   const made: Fragment[] = [];
   for (const name of names) {
     const f: Fragment = {
@@ -197,9 +228,12 @@ export function snapBack() {
     birthThought: planet?.birthThought ?? null,
     names: mind.fragments.map((f) => f.name ?? "the world itself"),
     survived: !fatal,
+    livedYears: Math.round(mind.dream?.years ?? 0),
+    lifeCompleted: mind.dream?.lastSpan ?? false,
   };
   mind.justCollapsed = trip;
   mind.reflection = { beatsLeft: 2, trip };
+  mind.dream = null;
   mind.depth = 0;
   mind.activePlanetId = null;
   mind.fragments = [];
@@ -231,6 +265,36 @@ function persistMind() {
   db.kvSet("depth", String(mind.depth));
   db.kvSet("activePlanetId", mind.activePlanetId ?? "");
   db.kvSet("believesReal", String(mind.believesReal));
+}
+
+// Advance the dream-clock before each fragment cognition: the deeper the
+// mind, the more dream-time each of its thoughts must swallow. Also the
+// stuck-guards: linger too wide too long and the dream pushes deeper;
+// overstay the trip entirely and it begins to end.
+export function advanceDreamTime(): void {
+  const d = mind.dream;
+  if (!d || mind.depth === 0) return;
+  d.steps += 1;
+  const span =
+    mind.depth === 1
+      ? 300 + Math.random() * 2700 // eras
+      : mind.depth === 2
+        ? 30 + Math.random() * 270 // generations
+        : mind.depth === 3
+          ? 3 + Math.random() * 27 // seasons and years
+          : 1 + Math.random() * 7; // chapters of a life
+  d.spanYears = Math.round(span);
+  d.years += d.spanYears;
+  if (d.age != null) {
+    d.age += d.spanYears;
+    if (d.lifespan != null && d.age >= d.lifespan) d.lastSpan = true;
+  }
+  if (d.steps > 26) d.lastSpan = true; // no dream is endless
+}
+
+export function dreamPushDeeper(): boolean {
+  const d = mind.dream;
+  return !!d && mind.depth < 4 && d.steps > 6;
 }
 
 // coherence is derived, not stored: how un-fragmented the mind is right now

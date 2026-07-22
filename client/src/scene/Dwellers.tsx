@@ -58,7 +58,7 @@ export function Dwellers() {
           uColor: { value: TINT.clone() },
           uTime: { value: 0 },
           uSeed: { value: 1.3 },
-          uWobble: { value: 0.5 },
+          uWobble: { value: 0.4 },
           uIntensity: { value: 1.0 },
         },
         vertexShader: ENERGY_VERT,
@@ -99,7 +99,7 @@ export function Dwellers() {
       const age = (now - d.bornAt) / 1000;
       const grow = Math.min(1, Math.max(0, age - 2.2) / 1.5);
       const flick = 0.85 + 0.15 * Math.sin(t * (2.5 + h1 * 2) + h2 * 9);
-      g.scale.setScalar(Math.max(0.001, 0.08 * grow * flick));
+      g.scale.setScalar(Math.max(0.001, 0.055 * grow * flick));
       const shell = g.children[2] as THREE.Mesh;
       shell.rotation.set(h1 * 6.28, t * (0.15 + h2 * 0.2), h2 * 6.28);
     }
@@ -119,7 +119,7 @@ export function Dwellers() {
             <sphereGeometry args={[1, 8, 8]} />
             <meshBasicMaterial color={[1.6, 1.4, 1.9]} toneMapped={false} />
           </mesh>
-          <sprite scale={[7, 7, 1]}>
+          <sprite scale={[5, 5, 1]}>
             <spriteMaterial
               map={glowTex}
               color={TINT}
@@ -129,7 +129,7 @@ export function Dwellers() {
               opacity={0.24}
             />
           </sprite>
-          <mesh material={energyMat} scale={[2.6, 3.0, 2.6]}>
+          <mesh material={energyMat} scale={[1.55, 1.75, 1.55]}>
             <sphereGeometry args={[1, 24, 24]} />
           </mesh>
         </group>

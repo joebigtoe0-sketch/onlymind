@@ -66,7 +66,7 @@ export function stepInquiry(thought: string) {
 export function closeInquiry(verdict: string) {
   const inq = currentInquiry();
   if (!inq) return;
-  db.insertLesson(verdict.slice(0, 240), Date.now());
+  db.insertLesson(verdict.slice(0, 1000), Date.now());
   db.insertEvent("verdict", Date.now(), { question: inq.question, verdict });
   queueTransmission(verdict, "verdict");
   saveInquiry(null); // the next surface thought opens a fresh one

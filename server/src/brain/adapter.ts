@@ -99,7 +99,7 @@ export async function callLLM(
         authorization: `Bearer ${API_KEY}`,
       },
       body: JSON.stringify({
-        ...bodyFor(model, 300, 0.9),
+        ...bodyFor(model, 600, 0.9),
         messages: [
           { role: "system", content: system },
           { role: "user", content: user },

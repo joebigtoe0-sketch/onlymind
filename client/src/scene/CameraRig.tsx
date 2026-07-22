@@ -4,7 +4,7 @@ import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import { useCosmos } from "../store";
 import { cosmosNow, introActive, sceneNow } from "../lib/time";
-import { planetPosition, radiusForMass } from "./lib/orbit";
+import { currentOrbitRadius, planetPosition, radiusForMass } from "./lib/orbit";
 import { followAnchor } from "./Focus";
 import { reportCameraInterest } from "../net/socket";
 
@@ -110,10 +110,11 @@ export function CameraRig() {
     if (!interacted.current && ignitionAt != null) {
       const t = (sceneNow() - ignitionAt) / 1000;
       if (t > 2.5) {
+        const nowC = cosmosNow();
         let maxR = 18;
         for (const p of useCosmos.getState().planets) {
           if (p.parentId == null) {
-            maxR = Math.max(maxR, p.orbitRadius + (p.diedAt != null ? 34 : 0));
+            maxR = Math.max(maxR, currentOrbitRadius(p, nowC) + (p.diedAt != null ? 34 : 0));
           }
         }
         const reveal = Math.min(170, maxR * 1.5 + 14);

@@ -57,7 +57,7 @@ export function Focus() {
       depthWrite: false,
       blending: THREE.AdditiveBlending,
     });
-  const veilMat = useMemo(() => makeSoulMat(3.7, 0.5, 1.4), []);
+  const veilMat = useMemo(() => makeSoulMat(3.7, 0.38, 1.4), []);
 
   useFrame((_, dt) => {
     const g = group.current;
@@ -179,14 +179,14 @@ export function Focus() {
     tint.copy(COLD).lerp(WARM, dyn.mood);
     const settle = Math.min(1, (tIgn - 2.2) / 3); // inherits the ignition's light
     const pulse = 1 + 0.16 * Math.sin(t * 5.1) * Math.sin(t * 1.7) + 0.05 * Math.sin(t * 0.8);
-    const coreScale = (0.24 * pulse * visibility + 0.02) * settle;
+    const coreScale = (0.15 * pulse * visibility + 0.015) * settle;
     mote.current!.scale.setScalar(coreScale);
     moteMat.current!.color.copy(tint).multiplyScalar(3.0 + snapGlow);
 
-    // the soul veil: one gauze layer, rising, slightly tall
+    // the soul veil: one gauze layer wrapped CLOSE around the core
     const v = veil.current!;
-    const vsc = Math.max(0.001, coreScale * 2.5);
-    v.scale.set(vsc, vsc * 1.2, vsc);
+    const vsc = Math.max(0.001, coreScale * 1.5);
+    v.scale.set(vsc, vsc * 1.12, vsc);
     v.rotation.y = t * 0.2;
     veilMat.uniforms.uTime.value = performance.now() / 1000;
     (veilMat.uniforms.uColor.value as THREE.Color).copy(tint);
@@ -194,8 +194,8 @@ export function Focus() {
 
     const gm = glow.current!.material as THREE.SpriteMaterial;
     gm.color.copy(tint);
-    gm.opacity = Math.min(1, (0.45 + snapGlow * 0.25) * visibility * settle);
-    const gs = (2.6 * pulse * visibility + 0.3) * (1 + snapGlow * 0.5) * settle;
+    gm.opacity = Math.min(1, (0.4 + snapGlow * 0.25) * visibility * settle);
+    const gs = (1.7 * pulse * visibility + 0.25) * (1 + snapGlow * 0.5) * settle;
     glow.current!.scale.set(gs, gs, 1);
   });
 

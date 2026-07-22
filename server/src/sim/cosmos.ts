@@ -119,16 +119,16 @@ export function makePlanet(
       diedAt: null,
     };
   }
-  // top-level worlds pack in a slow spiral: dense near the core, never
-  // outrunning the starfield even as the cosmos grows massive
-  const ring = sim.planets.filter((p) => p.parentId == null).length;
+  // the expanding universe: every world is BORN near the center and drifts
+  // outward with age (client computes the expansion deterministically) —
+  // new thoughts bloom inside, old ones are pushed ever further out
   return {
     id: `w${i}`,
     bornAt: Date.now(),
     birthThought,
     parentId: null,
     form,
-    orbitRadius: 6 + Math.pow(ring, 0.85) * 2.6 + Math.random() * 1.6,
+    orbitRadius: 6 + Math.random() * 3.5,
     inclination: (Math.random() - 0.5) * 0.55,
     ascendingNode: Math.random() * Math.PI * 2,
     phase0: Math.random() * Math.PI * 2,

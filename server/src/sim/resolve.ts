@@ -66,7 +66,7 @@ function record(text: string, planetId: string | null) {
 }
 
 export function resolveCognition(c: Cognition) {
-  const text = c.thought.trim().slice(0, 240);
+  const text = c.thought.trim().slice(0, 4000); // no meaningful cap — safety only
   if (!text) return;
 
   // ---- inside a dream: fragment actions -------------------------------------
@@ -131,6 +131,10 @@ export function resolveCognition(c: Cognition) {
           maybePaintVision(planetId, text);
         }
       }
+    }
+    // a life (or an age) that has told its final chapter completes the dream
+    if (mind.depth > 0 && mind.dream?.lastSpan && c.action !== "doubt") {
+      snapBack();
     }
     return;
   }

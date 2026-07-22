@@ -1,5 +1,5 @@
 import { markDiscovered, sim } from "../sim/cosmos";
-import { currentFragment, mind } from "../sim/mind";
+import { currentFragment, dreamPushDeeper, mind } from "../sim/mind";
 import { dwellersIn, holders } from "../sim/holders";
 import { resolveCognition } from "../sim/resolve";
 import { episode, episodeDue, episodeOverdue, notePressure } from "../sim/experiments";
@@ -108,6 +108,8 @@ export function startScheduler(initialDelayMs: number) {
 }
 
 async function cognize() {
+  const { advanceDreamTime } = await import("../sim/mind");
+  if (mind.depth > 0) advanceDreamTime(); // the dream-clock devours it
   const obs = buildObservation();
   let cognition = null;
   if (effectiveMode() === "live") {
@@ -129,7 +131,7 @@ async function cognize() {
   if (obs.reflecting && mind.reflection) {
     mind.reflection.beatsLeft -= 1;
     if (mind.reflection.beatsLeft <= 0) {
-      const lesson = (cognition.memoryNote ?? cognition.thought).trim().slice(0, 240);
+      const lesson = (cognition.memoryNote ?? cognition.thought).trim().slice(0, 1000);
       if (lesson) {
         db.insertLesson(lesson, Date.now());
         queueTransmission(lesson, "lesson");
@@ -218,6 +220,16 @@ function buildObservation(): Observation {
     selfName: deepest?.name ?? null,
     believesReal: mind.believesReal,
     timeInLifeSec: deepest ? (Date.now() - deepest.bornAt) / 1000 : null,
+    dream:
+      mind.depth > 0 && mind.dream
+        ? {
+            spanYears: mind.dream.spanYears,
+            totalYears: Math.round(mind.dream.years),
+            age: mind.dream.age,
+            lastSpan: mind.dream.lastSpan,
+            pushDeeper: dreamPushDeeper(),
+          }
+        : null,
     justCollapsed,
     // the reckoning begins only after the surfacing beat itself has passed
     reflecting:

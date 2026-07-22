@@ -40,7 +40,7 @@ export function composeTweetNow(): { text: string; sourceKind: string | null } |
   if (pool.length === 0) return null;
   pool.sort((a, b) => prio(a.eventKind) - prio(b.eventKind) || b.at - a.at);
   const chosen = pool[0];
-  const text = chosen.text.slice(0, 280);
+  const text = chosen.text; // as long as it is — no character limits
   db.insertTweet(text, Date.now(), chosen.eventKind);
   db.markTweeted(chosen.id);
   kvSet("lastTweetAt", String(Date.now()));

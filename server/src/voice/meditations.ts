@@ -39,11 +39,11 @@ export async function generateMeditation(): Promise<string | null> {
   );
 
   if (!text) text = CANNED[Math.floor(Math.random() * CANNED.length)];
-  text = text.trim().slice(0, 900);
+  text = text.trim().slice(0, 2500);
 
   think(text, null);
   db.insertEvent("meditation", Date.now(), {});
-  queueTransmission(text.slice(0, 280), "meditation");
+  queueTransmission(text, "meditation");
   db.kvSet("lastMeditationAt", String(Date.now()));
   return text;
 }
