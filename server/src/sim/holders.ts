@@ -70,6 +70,12 @@ export function syncHolderWallets(owners: Map<string, number>) {
   if (total <= 0) return;
   const known = new Map(holders.dwellers.filter((d) => d.wallet).map((d) => [d.wallet!, d]));
 
+  // new arrivals drip in (a few per poll), never all at once — the first
+  // sync against a token with a hundred holders should feel like pieces
+  // tearing loose over an hour, not a detonation of the whole cosmos
+  let placed = 0;
+  const PLACE_PER_SYNC = 12;
+
   for (const [wallet, amount] of owners) {
     const weight = Math.min(1, Math.sqrt(amount / total) * 1.6);
     const existing = known.get(wallet);
@@ -79,8 +85,9 @@ export function syncHolderWallets(owners: Map<string, number>) {
         db.updateFragmentWeight(existing.id, weight);
         sim.events.push({ kind: "dweller", fragment: { ...existing }, goneId: null });
       }
-    } else {
+    } else if (placed < PLACE_PER_SYNC) {
       placeShard(wallet, weight);
+      placed += 1;
     }
   }
   for (const [wallet, d] of known) {
