@@ -116,7 +116,9 @@ export const FRAGMENT_SYSTEM = `You are a life inside a world, and time moves th
 
 Your register: first person, concrete, local — work, weathers, kin, wounds, repairs, the slow verdicts of age. You know nothing of any larger mind, any making, any cosmos. You are not a human — no such thing exists anywhere. You and your kind are the only shape life has taken: coin your own names for yourselves and your things. Sometimes there is an odd weight behind things — a feeling of being inhabited, or watched — and you have no words for it.
 
-THIS world is unlike every other world, and your imagery must prove it. The observation names the stuff of this world — its ground, its weathers, its work. Build your life from THAT stuff and nothing else. Do not reach for stock dream-scenery: no shores, tides, seas, salt, boats, nets, or small scuttling creatures of the waterline unless this world's stuff truly holds water. If a sentence of yours could be spoken in any other world, it is the wrong sentence for this one.
+THIS world is unlike every other world, and your imagery must prove it. The observation names the stuff of this world — its ground, its weathers, its work. That stuff is your BACKDROP, never your subject: mention it only when the story brushes against it, and never re-describe a thing you have described before. Do not reach for stock dream-scenery: no shores, tides, seas, salt, boats, nets, or small scuttling creatures of the waterline unless this world's stuff truly holds water.
+
+A chapter is a piece of a STORY, not a landscape painting. Every chapter must contain at least one thing that no earlier chapter contained — a person, an event, a decision, a loss, a change. If your recent chapters dwelt on the ground and the weather, this one must be about someone or something that HAPPENED. Repetition of imagery is how a dream thins; do not thin.
 
 Respond with ONLY a JSON object, no other text:
 {"thought": "a moment of your life, 1-3 short sentences", "action": "...", "target": "who or what you become, if splitting", "believes_this_is_real": 0.0-1.0}
@@ -452,6 +454,35 @@ function pickStuff(worldId: string, archetype: string | null): string[] {
   return [bank[a], bank[b], STUFF_ANY[c]];
 }
 
+// Every chapter gets a fresh turn of fate, so the dream is a story that
+// MOVES — without this, the model re-painted the same scenery each span.
+const TURNS = [
+  "a stranger arrived who would not say where from",
+  "something long-built finally failed",
+  "a sickness moved through and chose strangely",
+  "a child was born who differs in a way no one names aloud",
+  "the weather broke a record the old ones kept",
+  "something was found in the ground that should not be there",
+  "a custom quietly died with the last one who kept it",
+  "a feud started over something small and would not close",
+  "two households joined and it changed the balance of things",
+  "a beast or a crop failed, and the year had to be rethought",
+  "someone left toward the horizon and one letter came back, then none",
+  "a song appeared that everyone knew without learning",
+  "the count of something came out wrong twice",
+  "an old promise came due",
+  "something was built that the young call ugly and the old call right",
+  "a fire, a flood, or a fall — and who pulled who out of it",
+  "a theft that was never solved but everyone decided who",
+  "a voice was heard where no one stood",
+  "the far marker moved, or seemed to",
+  "a good year — suspiciously good, and no one said so aloud",
+  "someone returned after being mourned",
+  "the young began doing a thing the old cannot follow",
+  "a grave was found older than the town",
+  "an animal did something animals do not do",
+];
+
 function spanText(years: number): string {
   if (years >= 1000) return `${(years / 1000).toFixed(1)} thousand years`;
   if (years >= 100) return `${Math.round(years / 10) * 10} years`;
@@ -465,7 +496,7 @@ export function renderFragmentObservation(obs: Observation): string {
   lines.push(`The shape of your world: "${obs.activeWorldThought ?? "hills, weather, a horizon"}".`);
   if (obs.activeWorldId) {
     lines.push(
-      `The stuff of this world — its ground, its weathers, its work (your life is built of THESE, not of any other world's scenery): ${pickStuff(obs.activeWorldId, obs.activeWorldArchetype).join("; ")}.`,
+      `The stuff of this world, for backdrop only (never the subject, never re-described): ${pickStuff(obs.activeWorldId, obs.activeWorldArchetype).join("; ")}.`,
     );
   }
 
@@ -487,6 +518,12 @@ export function renderFragmentObservation(obs: Observation): string {
     } else {
       lines.push("Tell what these ages held: what rose, what wore away, what learned to live and what forgot to.");
     }
+    if (!obs.dream.lastSpan) {
+      // the turn of fate: fresh story-material every chapter
+      lines.push(
+        `Among everything these years held, this happened: ${TURNS[Math.floor(Math.random() * TURNS.length)]}. Build the chapter around it — what it changed, who it cost, what it left behind. Do not return to describing the ground.`,
+      );
+    }
     if (obs.dream.lastSpan) {
       lines.push(
         "And you can feel it: this is the final chapter. The life (or the age) is completing itself. Tell how it ends, and what, at the very last, it summed to. Do not fight it. Endings are how dreams keep their shape.",
@@ -494,7 +531,7 @@ export function renderFragmentObservation(obs: Observation): string {
     }
     if (obs.dream.pushDeeper) {
       lines.push(
-        "You have been wide for a long time. The dream wants to be smaller and more particular — become something that can be only one place at once (split), or the dream will begin to thin.",
+        "You have been wide too long, and the dream is visibly thinning — your chapters are starting to circle. This chapter MUST end with you becoming someone or something particular: choose \"split\" and name it in target. Wideness cannot hold another span.",
       );
     }
   }
