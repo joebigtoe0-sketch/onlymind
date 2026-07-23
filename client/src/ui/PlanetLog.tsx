@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { PlanetLog as PlanetLogData } from "@shared/protocol";
 import { useCosmos } from "../store";
+import { hash01 } from "../scene/lib/forms";
 import { PALETTE_CSS } from "./palette";
 
 // The log of a held thought (§3): what the mind was thinking when it made
@@ -54,7 +55,10 @@ export function PlanetLog() {
           </div>
           {!planet.alive && planet.diedAt != null && (
             <div className="log-death">
-              the dream ended {sinceIgnition(planet.diedAt, log.ignitionAt)} — this world is cold now
+              the dream ended {sinceIgnition(planet.diedAt, log.ignitionAt)} —{" "}
+              {hash01(planet.id, 21) < Math.min(0.8, 0.22 + planet.targetMass / 5)
+                ? "it collapsed into light and burns on"
+                : "it broke into stones that still circle"}
             </div>
           )}
           {log.dwellers.length > 0 && (

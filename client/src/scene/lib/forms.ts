@@ -50,7 +50,7 @@ const ARCH: Record<WorldForm["archetype"], ArchTraits> = {
 const PALETTE_ARCH: WorldForm["archetype"][] = ["ember", "ocean", "crystal", "verdant", "storm", "ice"];
 
 // stable per-world randomness: hash of (id, salt) → [0, 1)
-function hash01(id: string, salt: number): number {
+export function hash01(id: string, salt: number): number {
   let h = (2166136261 ^ Math.imul(salt + 1, 0x9e3779b1)) >>> 0;
   for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 16777619);
   h ^= h >>> 13;
