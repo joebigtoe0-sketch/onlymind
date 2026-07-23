@@ -222,6 +222,8 @@ function buildObservation(): Observation {
     recentActions: [...recentActions],
     depth: mind.depth,
     activeWorldThought: activePlanet?.birthThought ?? null,
+    activeWorldId: activePlanet?.id ?? null,
+    activeWorldArchetype: activePlanet?.form?.archetype ?? null,
     lineage: mind.fragments.map((f) => f.name ?? "the world itself"),
     selfName: deepest?.name ?? null,
     believesReal: mind.believesReal,

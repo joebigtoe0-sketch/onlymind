@@ -130,8 +130,8 @@ export function makePlanet(
     birthThought,
     parentId: null,
     form,
-    orbitRadius: 6 + Math.random() * 3.5,
-    inclination: (Math.random() - 0.5) * 0.55,
+    orbitRadius: clearRootOrbit(6 + Math.random() * 3.5),
+    inclination: (Math.random() - 0.5) * 1.0,
     ascendingNode: Math.random() * Math.PI * 2,
     phase0: Math.random() * Math.PI * 2,
     paletteIndex: PALETTE_ORDER[i % PALETTE_ORDER.length],
@@ -140,6 +140,25 @@ export function makePlanet(
     alive: true,
     diedAt: null,
   };
+}
+
+// Bodies grew big enough to collide on screen: keep a newborn's orbit clear
+// of other young root worlds' CURRENT orbits. Mirrors the client's expansion
+// law (orbit.ts: K=9, T=10min) — worlds older than ~30 min have drifted far
+// enough out that the birth ring is clear of them anyway.
+function clearRootOrbit(candidate: number): number {
+  const now = Date.now();
+  const drifted = (p: Planet) => p.orbitRadius + 9 * Math.log1p((now - p.bornAt) / (10 * 60 * 1000));
+  const young = sim.planets.filter(
+    (p) => p.alive && p.parentId == null && now - p.bornAt < 30 * 60 * 1000,
+  );
+  let r = candidate;
+  for (let guard = 0; guard < 24; guard++) {
+    const clash = young.some((p) => Math.abs(drifted(p) - r) < 3.0);
+    if (!clash) break;
+    r += 3.1;
+  }
+  return r;
 }
 
 export function birth(p: Planet) {

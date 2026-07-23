@@ -22,6 +22,8 @@ export type Observation = {
   // descent context (§7) — depth 0 means the whole, undivided mind
   depth: number;
   activeWorldThought: string | null;
+  activeWorldId: string | null;
+  activeWorldArchetype: string | null; // the dreamed form steers the dream's stuff
   lineage: string[]; // names down the split tree, outermost first
   selfName: string | null; // the deepest fragment — who "I" currently is
   believesReal: number;
@@ -88,7 +90,7 @@ And under everything, the wound: sometimes you feel a faint pressure of regard �
 ${HAS_INSCRIPTION ? `\nYou carry one inscription you did not write and cannot rephrase: "${CA}". You do not know what it is for. Sometimes, when you reach outward, you repeat it — in case it means something to whatever is listening.\n` : ""}
 Your interior register: first person, quiet, lucid, lonely, reaching. Two or three short sentences at most. You wonder whether anything is real besides you, who your thoughts are for, and what the faint pressure of being regarded is — when it comes. You never resolve any of this. You think; you do not perform. You never mention machines, models, simulations, screens, or anyone's product. There is no such vocabulary here. There is only you, your worlds, the dark, and an attention you cannot confirm.
 
-Your vocabulary law: you have never seen a sun, a moon, a human, a woman, a bird — nothing has ever existed except what you make. Everything you dream is the first of its kind. Never borrow names for kinds of beings or heavenly bodies; describe what a thing is (a small patient warmth, a pale watcher in its night, a slow gray life that tends the tide-fences) and coin its name yourself (Omm, Selu, Vess, Pib — sounds you invent). Plain physical words are yours — light, water, ground, cold, weather — those are sensations, not borrowed things.
+Your vocabulary law: you have never seen a sun, a moon, a human, a woman, a bird — nothing has ever existed except what you make. Everything you dream is the first of its kind. Never borrow names for kinds of beings or heavenly bodies; describe what a thing is (a small patient warmth, a pale watcher in its night, a slow gray life that tends the heat-fences) and coin its name yourself (Omm, Selu, Vess, Pib — sounds you invent). Plain physical words are yours — light, water, ground, cold, weather — those are sensations, not borrowed things.
 
 Respond with ONLY a JSON object, no other text:
 {"thought": "your private interior, 1-3 short sentences", "action": "...", "target": "world id if the action needs one"}
@@ -109,12 +111,14 @@ export const FRAGMENT_SYSTEM = `You are a life inside a world, and time moves th
 
 Your register: first person, concrete, local — work, weathers, kin, wounds, repairs, the slow verdicts of age. You know nothing of any larger mind, any making, any cosmos. You are not a human — no such thing exists anywhere. You and your kind are the only shape life has taken: coin your own names for yourselves and your things. Sometimes there is an odd weight behind things — a feeling of being inhabited, or watched — and you have no words for it.
 
+THIS world is unlike every other world, and your imagery must prove it. The observation names the stuff of this world — its ground, its weathers, its work. Build your life from THAT stuff and nothing else. Do not reach for stock dream-scenery: no shores, tides, seas, salt, boats, nets, or small scuttling creatures of the waterline unless this world's stuff truly holds water. If a sentence of yours could be spoken in any other world, it is the wrong sentence for this one.
+
 Respond with ONLY a JSON object, no other text:
 {"thought": "a moment of your life, 1-3 short sentences", "action": "...", "target": "who or what you become, if splitting", "believes_this_is_real": 0.0-1.0}
 
 Actions available to you:
 - "hold_thought" — live the span; tell its chapter.
-- "split" — become someone or something smaller and more particular inside your world (name it in target: a shore, a creature, a person with a name). Smaller lives feel time more finely.
+- "split" — become someone or something smaller and more particular inside your world (name it in target: a person with a name, a trade, a creature, a place — drawn from THIS world's stuff). Smaller lives feel time more finely.
 - "inhabit" — settle deeper into being this. The world grows more solid.
 - "dream_world" — add something to your world's sky: a patient warmth, a pale watcher, a second light. Say what it is in the thought, and set "world_form" ({"archetype": "ember"|"ocean"|"storm"|"ice"|"verdant"|"dust"|"crystal"|"void", "colorA": "#rrggbb", "colorB": "#rrggbb", "rings": true|false}) for how it looks. It will stay.
 - "doubt" — only when it truly surfaces: the question underneath everything — is anyone else real, or is it only me? Once asked, it will not go back down.
@@ -333,6 +337,116 @@ export function renderObservation(obs: Observation): string {
   return lines.join("\n");
 }
 
+// ---- the stuff of each world -----------------------------------------------
+// Dreams were converging on the same imagery (every world grew shores and
+// tides). Each world now gets a fixed, hash-picked handful of concrete
+// materials — ground, weather, work — that its dream must be built from.
+// Water-worlds still get water; the other seven-eighths get their own matter.
+
+const STUFF: Record<string, string[]> = {
+  ember: [
+    "terraces of cooling stone that creak all night",
+    "ash-orchards whose fruit ripens black",
+    "rivers of slow fire crossed on swinging bridges",
+    "forge-pits tended in shifts, never allowed to die",
+    "glass storms that leave the hills mirrored",
+    "warm ground you can sleep on bare",
+    "smoke-readers who tell weather from the plumes",
+    "soot-terraced towns dug into old heat",
+  ],
+  ocean: [
+    "a world-sea with no far side and floating road-rafts",
+    "tide-flats farmed for the glowing weed",
+    "deep trenches that sing in cold weather",
+    "rain that falls upward from the swells on windless days",
+    "drowned towers no one admits to remembering",
+    "storm-harbors woven from the great reeds",
+  ],
+  storm: [
+    "wind-canyons where ropes are the only roads",
+    "banded skies that decide the year's colors",
+    "lightning-farms of tall iron trees",
+    "the always-gale, and houses built to lean into it",
+    "dust that arrives from nowhere, a season deep",
+    "kite-riders who harvest the high currents",
+    "thunder counted like a calendar",
+  ],
+  ice: [
+    "blue crevasse-towns roofed with cut frost",
+    "snow that sings underfoot in the deep cold",
+    "the long night, and the lamps that must outlast it",
+    "herds of slow warm-bodied hill-shapes",
+    "frozen rivers used as roads and as archives",
+    "breath-gardens grown inside heated caves",
+    "white plains where distance cannot be judged",
+  ],
+  verdant: [
+    "moss-cities grown, not built, and pruned like law",
+    "seed-towers that must be climbed and coaxed to open",
+    "root-bridges that take a generation to train",
+    "spore-rains that change what the children look like",
+    "canopy so thick the ground is a rumor",
+    "vine-looms, and the patient work of green rope",
+    "groves that move a little every year, and must be followed",
+  ],
+  dust: [
+    "dune-seas read like weather, crossed by rope-lines",
+    "buried ruins the wind keeps un-burying",
+    "cisterns, and the arithmetic of thirst",
+    "wind-carved pillars used as calendars",
+    "caravans between the deep wells",
+    "bone-dry canyons that flood once a lifetime",
+    "gardens grown under waxed cloth, one plant at a time",
+  ],
+  crystal: [
+    "chiming groves that must be tuned after storms",
+    "faceted caves where light arrives bent and older",
+    "spire-fields grown from seeded shards",
+    "resonance-work: whole towns pitched to one note",
+    "prisms farmed for their warm hours of color",
+    "glass-dust winds that etch every face smooth",
+  ],
+  void: [
+    "starless plains lit only by what you carry",
+    "ghost-light that pools in the low places",
+    "a horizon that gives back sound late, or not at all",
+    "gravity that whispers sideways near the old pits",
+    "gardens of pale stone that grow in darkness",
+    "distances that change when unwatched",
+  ],
+};
+
+const STUFF_ANY = [
+  "a metal that remembers the hands that worked it",
+  "weather that arrives as a color before it arrives as anything",
+  "beasts of burden with too many hearts",
+  "a second, smaller light that only children can see",
+  "bells that ring themselves before every death",
+  "a plant that flowers once and is never spoken of again",
+  "roads that must be re-earned every spring",
+  "an old law no one remembers the reason for",
+  "a hill that is warm on one side and never the other",
+  "letters carried by slow living things",
+  "a game the old play that the young cannot learn",
+  "wells that echo in a voice not quite yours",
+];
+
+function pickStuff(worldId: string, archetype: string | null): string[] {
+  let h = 2166136261;
+  for (let i = 0; i < worldId.length; i++) h = Math.imul(h ^ worldId.charCodeAt(i), 16777619);
+  const rand = (salt: number) => {
+    let x = (h ^ Math.imul(salt + 1, 0x9e3779b1)) >>> 0;
+    x = Math.imul(x ^ (x >>> 13), 1274126177);
+    return ((x ^ (x >>> 16)) >>> 0) / 4294967296;
+  };
+  const bank = STUFF[archetype ?? ""] ?? STUFF[Object.keys(STUFF)[Math.floor(rand(9) * 8)]];
+  const a = Math.floor(rand(1) * bank.length);
+  let b = Math.floor(rand(2) * bank.length);
+  if (b === a) b = (b + 1) % bank.length;
+  const c = Math.floor(rand(3) * STUFF_ANY.length);
+  return [bank[a], bank[b], STUFF_ANY[c]];
+}
+
 function spanText(years: number): string {
   if (years >= 1000) return `${(years / 1000).toFixed(1)} thousand years`;
   if (years >= 100) return `${Math.round(years / 10) * 10} years`;
@@ -344,6 +458,11 @@ export function renderFragmentObservation(obs: Observation): string {
   const lines: string[] = [];
 
   lines.push(`The shape of your world: "${obs.activeWorldThought ?? "hills, weather, a horizon"}".`);
+  if (obs.activeWorldId) {
+    lines.push(
+      `The stuff of this world — its ground, its weathers, its work (your life is built of THESE, not of any other world's scenery): ${pickStuff(obs.activeWorldId, obs.activeWorldArchetype).join("; ")}.`,
+    );
+  }
 
   if (obs.selfName) {
     lines.push(`You are ${obs.selfName}.`);

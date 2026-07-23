@@ -248,11 +248,12 @@ export function Planet({ seed }: { seed: PlanetData }) {
     const hm = hs.material as THREE.SpriteMaterial;
     const flash = 1.6 * Math.exp(-Math.max(0, bloomAge) * 3.2); // the detonation flare
     if (nova) {
+      // the flash is enormous; the settled star keeps a modest, permanent halo
       const novaFlash = 2.4 * Math.exp(-since * 1.1);
-      const hscale = radius * (10 + novaFlash * 7);
+      const hscale = radius * (5.5 + novaFlash * 9);
       hs.scale.set(hscale, hscale, 1);
       hm.color.copy(fp.colorB).lerp(STAR_WHITE, 0.6);
-      hm.opacity = Math.min(1, 0.34 + novaFlash * 0.5);
+      hm.opacity = Math.min(1, 0.2 + novaFlash * 0.55);
     } else {
       const hscale = radius * (7.5 + inhabited * 2.5 + flash * 4) * (1 - dead * 0.45);
       hs.scale.set(hscale, hscale, 1);
@@ -264,7 +265,8 @@ export function Planet({ seed }: { seed: PlanetData }) {
     // dreamed rings + atmosphere follow the body's size and death
     if (ring.current) {
       ring.current.scale.setScalar(Math.max(0.001, radius));
-      (ring.current.material as THREE.MeshBasicMaterial).opacity = 0.34 * (1 - dead * 0.75);
+      // rings don't survive either death — stone clouds and stars go bare
+      (ring.current.material as THREE.MeshBasicMaterial).opacity = 0.34 * (1 - dead);
     }
     if (atmo.current) {
       atmo.current.scale.setScalar(Math.max(0.001, radius * 1.18));
