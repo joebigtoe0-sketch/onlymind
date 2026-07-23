@@ -94,6 +94,13 @@ function buildExhibits(): Exhibit[] {
     { id: "pv-waterworld", label: "a water-world", archetype: "ocean", colorA: "#0a2e4f", colorB: "#3fd2ff", force: { liquid: 0.95, land: 0.3, clouds: 0.4 } },
     { id: "pv-continental", label: "continental — seas in the low places", archetype: "verdant", colorA: "#12301c", colorB: "#5aff9a", force: { liquid: 0.4, land: 0.95, growth: 0.55, clouds: 0.3 } },
     { id: "pv-growth", label: "growth-blanketed", archetype: "verdant", colorA: "#1e3313", colorB: "#c8ff5a", force: { growth: 0.9, land: 0.9, liquid: 0.5 } },
+    // the sculpt genes: shape itself as variety
+    { id: "pv-crag", label: "crag world — carved silhouette", archetype: "dust", colorA: "#3d2b1c", colorB: "#ffb87a", force: { relief: 0.95, craterDepth: 0.4, liquid: 0, clouds: 0 } },
+    { id: "pv-dented", label: "dented — craters you can feel", archetype: "ice", colorA: "#1c2b45", colorB: "#bfe4ff", force: { crater: 0.9, craterDepth: 0.95, liquid: 0, land: 0, clouds: 0 } },
+    { id: "pv-blob", label: "blob-ball", archetype: "verdant", colorA: "#1e3313", colorB: "#c8ff5a", force: { bump: 0.85, relief: 0.2, liquid: 0, clouds: 0 } },
+    { id: "pv-lowpoly", label: "low-poly — chiseled", archetype: "crystal", colorA: "#2a1440", colorB: "#c95aff", force: { facet: 1, relief: 0.6, lumpy: 0.15, marble: 0.5 } },
+    { id: "pv-candy", label: "candy-striped", archetype: "storm", colorA: "#33202b", colorB: "#ff9ad5", force: { stripe: 0.95, swirl: 0, band: 0.3, marble: 0.1, land: 0 } },
+    { id: "pv-barber", label: "barber-pole swirl", archetype: "crystal", colorA: "#12333f", colorB: "#5affe4", force: { stripe: 0.9, swirl: 3.2, marble: 0.1 } },
   );
   return out;
 }
@@ -158,6 +165,12 @@ function PreviewPlanet({ ex, position }: { ex: Exhibit; position: [number, numbe
         uAurora: { value: fp.aurora * unlock },
         uAuroraCol: { value: fp.auroraColor },
         uGrowth: { value: fp.growth * unlock },
+        uRelief: { value: fp.relief },
+        uBump: { value: fp.bump },
+        uCraterDepth: { value: fp.craterDepth },
+        uFacet: { value: fp.facet },
+        uStripe: { value: fp.stripe },
+        uSwirl: { value: fp.swirl },
       },
       vertexShader: PLANET_VERT,
       fragmentShader: PLANET_FRAG,

@@ -11,6 +11,9 @@ uniform float uSeed;
 uniform float uLumpy;
 uniform float uDead;
 uniform vec3 uAxis;
+uniform float uRelief; // rocky crags — ridged noise carving the silhouette
+uniform float uBump; // blob-ball bumps standing off the surface
+uniform float uCraterDepth; // craters that actually dent the body
 
 varying vec3 vNormal;
 varying vec3 vWorldPos;
@@ -45,9 +48,45 @@ float fbm(vec3 p) {
   return s;
 }
 
+// same sparse-crater cells as the fragment shader (transforms must match),
+// so dented craters shade correctly
+vec2 vcraters(vec3 p, float density) {
+  vec3 ip = floor(p);
+  vec3 fp = fract(p);
+  float bowl = 0.0;
+  float rim = 0.0;
+  for (int x = -1; x <= 1; x++)
+  for (int y = -1; y <= 1; y++)
+  for (int z = -1; z <= 1; z++) {
+    vec3 g = vec3(float(x), float(y), float(z));
+    if (hash(ip + g + 7.7) > density) continue;
+    vec3 c = g + vec3(hash(ip + g), hash(ip + g + 17.1), hash(ip + g + 31.7)) - fp;
+    float r = 0.30 + 0.22 * hash(ip + g + 3.3);
+    float d = length(c) / r;
+    bowl = max(bowl, 1.0 - smoothstep(0.5, 1.0, d));
+    rim = max(rim, smoothstep(0.5, 0.8, d) * (1.0 - smoothstep(0.8, 1.2, d)));
+  }
+  return vec2(bowl, rim);
+}
+
 float surfDisp(vec3 n) {
   // alive: broad gentle unevenness — a world, not a marble
   float live = (fbm(n * 2.1 + uSeed * 3.1) - 0.5) * uLumpy;
+  // crags: ridged noise carving a chunky rock silhouette
+  if (uRelief > 0.01) {
+    float ridge = 1.0 - abs(vnoise(n * 3.1 + uSeed * 6.1) * 2.0 - 1.0);
+    live += (ridge - 0.62) * uRelief * 0.24;
+  }
+  // bumps: rounded blobs standing off the ball
+  if (uBump > 0.01) {
+    float b = pow(vnoise(n * 4.6 + uSeed * 8.3), 3.0);
+    live += b * uBump * 0.3;
+  }
+  // dented craters: the bowls really sink, the rims really stand
+  if (uCraterDepth > 0.01) {
+    vec2 cr = vcraters(n * 2.4 + uSeed * 13.0, 0.40);
+    live += (cr.y * 0.35 - cr.x) * uCraterDepth * 0.16;
+  }
   // dead: the rock the dream cooled into — ridges gouged by deep bites
   float rock = (fbm(n * 2.3 + uSeed * 5.7) - 0.5) * 0.52;
   float gouge = pow(vnoise(n * 3.4 + uSeed * 9.3), 2.0) * 0.38;
@@ -66,7 +105,7 @@ void main() {
   vec3 up = abs(n.y) < 0.98 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
   vec3 t = normalize(cross(up, n));
   vec3 b = cross(n, t);
-  float e = 0.06;
+  float e = 0.04;
   vec3 p0 = shaped(n);
   vec3 p1 = shaped(normalize(n + t * e));
   vec3 p2 = shaped(normalize(n + b * e));
@@ -105,6 +144,9 @@ uniform float uAurora; // polar aurora bands
 uniform vec3 uAuroraCol;
 uniform float uGrowth; // living blankets on the dry ground — forests, or
                        // whatever this world grows instead of forests
+uniform float uFacet; // 1 = flat-shaded low-poly look (sculpted, chiseled)
+uniform float uStripe; // hard candy-stripes of the second/third colors
+uniform float uSwirl; // how much the stripes twist around the body
 
 varying vec3 vNormal;
 varying vec3 vWorldPos;
@@ -162,6 +204,11 @@ vec2 craters(vec3 p, float density) {
 
 void main() {
   vec3 N = normalize(vNormal);
+  // low-poly worlds: normals from screen derivatives — every triangle a facet
+  if (uFacet > 0.01) {
+    vec3 fN = normalize(cross(dFdx(vWorldPos), dFdy(vWorldPos)));
+    N = normalize(mix(N, fN, uFacet));
+  }
   vec3 V = normalize(cameraPosition - vWorldPos);
   vec3 L = normalize(-vWorldPos); // the core sits at the origin
 
@@ -175,6 +222,17 @@ void main() {
   p.y *= 1.0 + uBand * 2.8;
   float n = fbm(p * (2.2 + uTurb * 2.6) + uSeed * 7.31);
   vec3 surf = mix(uBase, uColB * 0.5, smoothstep(0.3, 0.75, n));
+
+  // candy stripes: hard bands of the other colors, twisting around the body
+  // (uSwirl 0 = straight latitudes, 2-4 = barber-pole spirals)
+  if (uStripe > 0.01) {
+    float ang = atan(np.z, np.x);
+    float warp = fbm(np * 2.0 + uSeed * 19.0);
+    float sv = sin(np.y * 9.0 + ang * uSwirl + warp * 2.6 + uSeed * 6.0);
+    float sm = smoothstep(0.05, 0.4, sv);
+    vec3 stripeCol = mix(uColB * 0.8, uColC, 0.5 + 0.5 * sin(ang * 2.0 + uSeed * 3.0));
+    surf = mix(surf, stripeCol, sm * uStripe);
+  }
 
   // marbled worlds: the three colors fold through each other, storm-warped
   if (uMarble > 0.01) {

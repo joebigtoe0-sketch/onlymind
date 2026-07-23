@@ -27,6 +27,12 @@ export type FormParams = {
   aurora: number; // polar aurora bands
   auroraColor: THREE.Color;
   growth: number; // living blankets on the dry ground
+  relief: number; // rocky crag silhouette (vertex ridges)
+  bump: number; // blob-ball bumps
+  craterDepth: number; // craters that dent the geometry
+  facet: number; // flat-shaded low-poly look
+  stripe: number; // hard candy-stripes
+  swirl: number; // stripe twist (barber-pole)
   axis: THREE.Vector3; // the potato axes death collapses into
   spin: number; // signed rad/s of surface rotation
   rings: boolean;
@@ -119,6 +125,12 @@ export function formParams(seed: Planet): FormParams {
         ? colorC.clone().offsetHSL((j(17) - 0.5) * 0.3, 0.15, 0.12)
         : colorA.clone().multiplyScalar(0.8).offsetHSL(0, 0.08, -0.04);
 
+  // the sculpt genes: how much the SHAPE itself departs from a sphere,
+  // and whether the surface wears hard graphic patterns
+  const relief0 =
+    arch === "dust" ? 0.5 : arch === "ember" ? 0.35 : arch === "crystal" ? 0.25 : arch === "ice" ? 0.15 : 0.06;
+  const facet0 = arch === "crystal" ? 0.5 : arch === "ice" ? 0.25 : 0.0;
+
   const fp: FormParams = {
     colorA,
     colorB,
@@ -131,6 +143,12 @@ export function formParams(seed: Planet): FormParams {
     crater: clamp01(a.crater + (j(5) - 0.5) * 0.4),
     land: clamp01(a.land + (j(6) - 0.5) * 0.35),
     marble: clamp01(a.marble + (j(7) - 0.5) * 0.45),
+    relief: clamp01(relief0 * (0.3 + 1.5 * j(31))),
+    bump: j(32) < 0.18 ? 0.35 + 0.5 * j(33) : 0,
+    craterDepth: 0, // assigned below with crater-heavy worlds
+    facet: j(34) < facet0 ? 0.85 : 0,
+    stripe: 0,
+    swirl: 0,
     liquid: clamp01(a.liquid * (0.35 + 1.3 * j(18))),
     liquidGlow: a.liquidGlow,
     liquidColor,
@@ -150,6 +168,17 @@ export function formParams(seed: Planet): FormParams {
     rings,
   };
 
+  // cratered temperaments get real dents, not just painted shadows
+  fp.craterDepth = fp.crater > 0.4 ? clamp01(fp.crater * (0.5 + j(35))) : 0;
+
+  // candy-stripes: any world can be born graphic — hard twisting bands
+  if (j(36) < 0.11) {
+    fp.stripe = 0.65 + 0.35 * j(37);
+    fp.swirl = j(38) < 0.4 ? 0 : 1.5 + 2.5 * j(39); // straight or barber-pole
+    fp.marble = Math.min(fp.marble, 0.2);
+    fp.land = Math.min(fp.land, 0.3);
+  }
+
   // VARIANT MODES: whole sub-species of world within each archetype, so two
   // worlds of the same temperament can still be different KINDS of thing
   const v = j(23);
@@ -166,6 +195,8 @@ export function formParams(seed: Planet): FormParams {
     fp.atmo = 0;
     fp.growth = 0;
     fp.lumpy = Math.max(fp.lumpy, 0.12);
+    fp.craterDepth = Math.max(fp.craterDepth, 0.7); // dents you can SEE
+    fp.stripe = 0;
   } else if (arch === "storm" && v < 0.4) {
     // a true gas giant: nothing but banded weather, slightly oblate
     fp.band = 1;
@@ -175,6 +206,10 @@ export function formParams(seed: Planet): FormParams {
     fp.land = 0;
     fp.lumpy = 0;
     fp.growth = 0;
+    fp.relief = 0;
+    fp.bump = 0;
+    fp.craterDepth = 0;
+    fp.facet = 0;
     fp.marble = Math.min(fp.marble, 0.25);
     fp.axis.set(1.02, 0.93, 1.02);
   } else if (arch === "ember" && v < 0.35) {
@@ -184,6 +219,7 @@ export function formParams(seed: Planet): FormParams {
     fp.liquidGlow = 1;
     fp.land = 0.5;
     fp.crater = Math.max(fp.crater, 0.3);
+    fp.relief = Math.max(fp.relief, 0.5);
     fp.growth = 0;
   } else if ((arch === "ocean" || arch === "verdant") && v < 0.28) {
     // a water-world: one endless sea, a few island specks
