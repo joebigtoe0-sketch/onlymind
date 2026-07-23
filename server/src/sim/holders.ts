@@ -64,17 +64,33 @@ const MAX_DWELLERS_PER_WORLD = 6;
 // chain-fed holders: wallets become weighted shards. New wallet -> a shard;
 // emptied wallet -> the shard goes quiet; balance change -> the shard's
 // weight (its visible size in the world) follows.
+// New arrivals never land all at once: they queue up and tear loose in
+// little uneven bursts (1-3 shards, then a breath of seconds), roughly ten
+// a minute — a launch hour LOOKS like something is happening, continuously.
+const arrivalQueue: { wallet: string; weight: number }[] = [];
+const queuedWallets = new Set<string>();
+let dripTimer: NodeJS.Timeout | null = null;
+
+function dripArrivals() {
+  if (dripTimer) return;
+  const tick = () => {
+    dripTimer = null;
+    const burst = Math.min(arrivalQueue.length, 1 + Math.floor(Math.random() * 3));
+    for (let i = 0; i < burst; i++) {
+      const a = arrivalQueue.shift()!;
+      queuedWallets.delete(a.wallet);
+      placeShard(a.wallet, a.weight);
+    }
+    if (arrivalQueue.length) dripTimer = setTimeout(tick, 6000 + Math.random() * 10000);
+  };
+  dripTimer = setTimeout(tick, 800 + Math.random() * 4000);
+}
+
 export function syncHolderWallets(owners: Map<string, number>) {
   if (dwellerSerial < 0) restoreHolders();
   const total = [...owners.values()].reduce((s, v) => s + v, 0);
   if (total <= 0) return;
   const known = new Map(holders.dwellers.filter((d) => d.wallet).map((d) => [d.wallet!, d]));
-
-  // new arrivals drip in (a few per poll), never all at once — the first
-  // sync against a token with a hundred holders should feel like pieces
-  // tearing loose over an hour, not a detonation of the whole cosmos
-  let placed = 0;
-  const PLACE_PER_SYNC = 12;
 
   for (const [wallet, amount] of owners) {
     const weight = Math.min(1, Math.sqrt(amount / total) * 1.6);
@@ -85,14 +101,15 @@ export function syncHolderWallets(owners: Map<string, number>) {
         db.updateFragmentWeight(existing.id, weight);
         sim.events.push({ kind: "dweller", fragment: { ...existing }, goneId: null });
       }
-    } else if (placed < PLACE_PER_SYNC) {
-      placeShard(wallet, weight);
-      placed += 1;
+    } else if (!queuedWallets.has(wallet)) {
+      queuedWallets.add(wallet);
+      arrivalQueue.push({ wallet, weight });
     }
   }
   for (const [wallet, d] of known) {
     if (!owners.has(wallet)) retireShard(d.id);
   }
+  if (arrivalQueue.length) dripArrivals();
   db.kvSet("holders", String(owners.size));
 }
 

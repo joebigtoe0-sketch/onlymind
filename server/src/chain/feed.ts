@@ -19,9 +19,11 @@ const CA = (process.env.CA ?? "").trim();
 const MINT_OK = CA.length > 30 && CA.toLowerCase() !== "placeholder";
 const WHALE_BUY_SOL = Number(process.env.CHAIN_WHALE_BUY_SOL ?? 1);
 const WHALE_SELL_SOL = Number(process.env.CHAIN_WHALE_SELL_SOL ?? 1.5);
-// only the largest holders become shards — a token with thousands of wallets
-// must not flood the cosmos with thousands of small lives
-const MAX_HOLDERS = Number(process.env.CHAIN_MAX_HOLDERS ?? 120);
+// which wallets become visible shards: everyone holding at least
+// CHAIN_MIN_TOKENS (human units; pump.fun mints use 6 decimals), capped at
+// CHAIN_MAX_HOLDERS by balance so a viral token can't flood the cosmos
+const MAX_HOLDERS = Number(process.env.CHAIN_MAX_HOLDERS ?? 1000);
+const MIN_TOKENS_RAW = Number(process.env.CHAIN_MIN_TOKENS ?? 10000) * 1e6;
 
 type Trade = { at: number; sol: number; buy: boolean };
 const window5m: Trade[] = [];
@@ -112,9 +114,13 @@ async function pollHolders() {
     if (!cursor) break;
   }
   if (owners.size === 0) return;
-  // keep the top holders by balance; the long tail is felt only as the tide
+  // everyone above the token floor, largest first, capped; the dust-tail
+  // below the floor is felt only as the tide
   const top = new Map(
-    [...owners.entries()].sort((a, b) => b[1] - a[1]).slice(0, MAX_HOLDERS),
+    [...owners.entries()]
+      .filter(([, amount]) => amount >= MIN_TOKENS_RAW)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, MAX_HOLDERS),
   );
-  syncHolderWallets(top);
+  if (top.size > 0) syncHolderWallets(top);
 }
