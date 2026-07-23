@@ -26,6 +26,7 @@ export type FormParams = {
   clouds: number; // rotating cloud shell coverage
   aurora: number; // polar aurora bands
   auroraColor: THREE.Color;
+  growth: number; // living blankets on the dry ground
   axis: THREE.Vector3; // the potato axes death collapses into
   spin: number; // signed rad/s of surface rotation
   rings: boolean;
@@ -94,6 +95,11 @@ export function formParams(seed: Planet): FormParams {
 
   const a = ARCH[arch];
   const j = (salt: number) => hash01(seed.id, salt);
+
+  // twin-proofing: even two worlds dreamed in the SAME archetype and colors
+  // drift apart — every world's hues are nudged by its own hash
+  colorA.offsetHSL((j(24) - 0.5) * 0.12, (j(25) - 0.5) * 0.16, (j(26) - 0.5) * 0.08);
+  colorB.offsetHSL((j(27) - 0.5) * 0.12, (j(28) - 0.5) * 0.14, (j(29) - 0.5) * 0.08);
   // multiplicative wobble: same temperament, never the same face
   const wob = (v: number, salt: number) => clamp01(v * (0.65 + 0.7 * j(salt)));
 
@@ -104,12 +110,14 @@ export function formParams(seed: Planet): FormParams {
     .lerp(colorB, 0.3 + 0.4 * j(8))
     .offsetHSL((j(9) - 0.5) * 0.5, 0.1, 0.05);
 
-  // the liquid: lava for ember (hot, self-lit), deep base-color seas for
-  // water worlds, glowing colorC for crystal/void — any color a dream needs
+  // the liquid: lava for ember (the world's own hot color), glowing colorC
+  // for crystal/void (any color a dream needs), deep base-color seas for water
   const liquidColor =
-    a.liquidGlow > 0.5
-      ? colorC.clone().offsetHSL((j(17) - 0.5) * 0.3, 0.15, 0.12)
-      : colorA.clone().multiplyScalar(0.8).offsetHSL(0, 0.08, -0.04);
+    a.liquidGlow >= 0.9
+      ? colorB.clone().offsetHSL((j(17) - 0.5) * 0.06, 0.1, 0.08)
+      : a.liquidGlow > 0.5
+        ? colorC.clone().offsetHSL((j(17) - 0.5) * 0.3, 0.15, 0.12)
+        : colorA.clone().multiplyScalar(0.8).offsetHSL(0, 0.08, -0.04);
 
   const fp: FormParams = {
     colorA,
@@ -123,13 +131,16 @@ export function formParams(seed: Planet): FormParams {
     crater: clamp01(a.crater + (j(5) - 0.5) * 0.4),
     land: clamp01(a.land + (j(6) - 0.5) * 0.35),
     marble: clamp01(a.marble + (j(7) - 0.5) * 0.45),
-    liquid: clamp01(a.liquid * (0.55 + 0.9 * j(18))),
+    liquid: clamp01(a.liquid * (0.35 + 1.3 * j(18))),
     liquidGlow: a.liquidGlow,
     liquidColor,
     cap: clamp01(a.cap * (0.4 + 1.2 * j(19))),
     clouds: clamp01(a.clouds * (0.5 + j(20))),
     aurora: clamp01(a.aurora * (0.4 + 1.2 * j(21))),
     auroraColor: colorB.clone().lerp(colorC, j(22)).offsetHSL(0.08, 0.2, 0.15),
+    growth: clamp01(
+      (arch === "verdant" ? 0.65 : arch === "ocean" ? 0.3 : 0.08) * (0.4 + 1.3 * j(30)),
+    ),
     axis: new THREE.Vector3(
       1 + (j(10) - 0.5) * 0.55,
       1 + (j(11) - 0.5) * 0.55,
@@ -138,6 +149,53 @@ export function formParams(seed: Planet): FormParams {
     spin: (j(13) < 0.5 ? -1 : 1) * (0.02 + 0.07 * j(14)),
     rings,
   };
+
+  // VARIANT MODES: whole sub-species of world within each archetype, so two
+  // worlds of the same temperament can still be different KINDS of thing
+  const v = j(23);
+  if ((arch === "dust" || arch === "ice" || arch === "void") && v < 0.3) {
+    // a bare moon: grey, dead-still, crater-bitten, airless
+    const grey = new THREE.Color("#9a9aa2");
+    colorA.lerp(grey, 0.75).offsetHSL(0, 0, -0.12);
+    colorB.lerp(grey, 0.7);
+    fp.crater = Math.max(fp.crater, 0.85);
+    fp.liquid = 0;
+    fp.land = 0;
+    fp.marble = 0;
+    fp.clouds = 0;
+    fp.atmo = 0;
+    fp.growth = 0;
+    fp.lumpy = Math.max(fp.lumpy, 0.12);
+  } else if (arch === "storm" && v < 0.4) {
+    // a true gas giant: nothing but banded weather, slightly oblate
+    fp.band = 1;
+    fp.turb *= 0.55;
+    fp.crater = 0;
+    fp.liquid = 0;
+    fp.land = 0;
+    fp.lumpy = 0;
+    fp.growth = 0;
+    fp.marble = Math.min(fp.marble, 0.25);
+    fp.axis.set(1.02, 0.93, 1.02);
+  } else if (arch === "ember" && v < 0.35) {
+    // lava-and-rock: rivers of fire through a near-black crust
+    colorA.lerp(new THREE.Color("#17100c"), 0.7);
+    fp.liquid = Math.max(fp.liquid, 0.7);
+    fp.liquidGlow = 1;
+    fp.land = 0.5;
+    fp.crater = Math.max(fp.crater, 0.3);
+    fp.growth = 0;
+  } else if ((arch === "ocean" || arch === "verdant") && v < 0.28) {
+    // a water-world: one endless sea, a few island specks
+    fp.liquid = 0.95;
+    fp.land = Math.min(fp.land, 0.35);
+    fp.clouds = Math.max(fp.clouds, 0.35);
+  } else if ((arch === "ocean" || arch === "verdant") && v > 0.74) {
+    // continental: mostly ground, seas in the low places only
+    fp.liquid = Math.min(fp.liquid, 0.42);
+    fp.land = Math.max(fp.land, 0.9);
+    fp.growth = Math.max(fp.growth, 0.45);
+  }
 
   // rare temperament breaks, so the sky holds surprises: a world dreamed in
   // many colors at once, one that is nearly all continent, a sea of light

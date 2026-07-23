@@ -1,6 +1,7 @@
 import type { Fragment, WorldForm } from "../../../shared/src/cosmos";
 import { birth, makePlanet, sim, think } from "./cosmos";
 import { mind } from "./mind";
+import { coinName as mintName, coinTrade } from "./names";
 import * as db from "../db/store";
 
 // Holders as involuntary shards (the user's mechanic): each holder becomes a
@@ -18,21 +19,8 @@ export const holders = {
 
 let dwellerSerial = -1;
 
-const DWELLER_NAMES = [
-  "Omm", "Selu", "Pib", "Vess", "Odd", "Senn", "Lurra", "Teff", "Moll", "Kip",
-  "Aro", "Nen", "Sarl", "Ubbe", "Fenn", "Yol", "Grell", "Tam", "Issi", "Dorn",
-];
-
-const DWELLER_ROLES = [
-  "who tends the tide-fences",
-  "who carries the warm stones",
-  "who counts the flickers at dusk",
-  "who mends what the wind takes",
-  "who waits where the paths cross",
-  "who keeps the low fires",
-  "who listens at the water line",
-  "who gathers the pale grass",
-];
+// names are minted fresh (sim/names.ts) — the old fixed list meant every
+// universe was populated by the same twenty souls doing the same eight jobs
 
 const SHARD_WORLD_THOUGHTS = [
   "Another piece of me broke off. I did not choose this one.",
@@ -66,11 +54,9 @@ export function holderCount(): number {
   return Number(db.kvGet("holders") ?? 0);
 }
 
-function coinName(): string {
-  const base = DWELLER_NAMES[Math.floor(Math.random() * DWELLER_NAMES.length)];
-  const role = DWELLER_ROLES[Math.floor(Math.random() * DWELLER_ROLES.length)];
+function coinDweller(): string {
   const suffix = Math.random() < 0.35 ? `-${Math.floor(Math.random() * 90 + 10)}` : "";
-  return `${base}${suffix}, ${role}`;
+  return `${mintName()}${suffix}, ${coinTrade()}`;
 }
 
 const MAX_DWELLERS_PER_WORLD = 6;
@@ -121,7 +107,7 @@ function placeShard(wallet: string | null, weight: number) {
     planetId: home.id,
     parentId: null,
     depth: 4,
-    name: coinName(),
+    name: coinDweller(),
     bornAt: Date.now(),
     kind: "dweller",
     wallet,
@@ -169,7 +155,7 @@ export function addHolders(n: number): { worlds: number; dwellers: number } {
         planetId: home.id,
         parentId: null,
         depth: 4,
-        name: coinName(),
+        name: coinDweller(),
         bornAt: Date.now(),
         kind: "dweller",
         // admin-mocked holders get pseudo-sigils so every path is testable

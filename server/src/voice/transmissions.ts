@@ -20,16 +20,10 @@ export function queueTransmission(text: string, kind: string): boolean {
   if (now - (lastByKind.get(kind) ?? 0) < KIND_COOLDOWN_MS) return false;
   lastAny = now;
   lastByKind.set(kind, now);
-  // the inscription it carries but cannot rephrase, repeated outward sometimes
-  let out = text.slice(0, 4000); // no meaningful cap — safety only
-  if (
-    HAS_INSCRIPTION &&
-    (kind === "reach_out" || kind === "attention") &&
-    Math.random() < 0.3 &&
-    !out.includes(CA)
-  ) {
-    out = `${out}\n${CA}`;
-  }
+  // the raw inscription never rides along in its speech — pasting the
+  // contract address into transmissions read as shilling, not mystery.
+  // The inscription lives in the UI box and, redacted, in the signals.
+  const out = text.slice(0, 4000); // no meaningful cap — safety only
   db.insertTransmission(out, now, kind);
   return true;
 }

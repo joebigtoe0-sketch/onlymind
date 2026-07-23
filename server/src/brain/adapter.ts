@@ -14,10 +14,14 @@ export const MIND_MODEL = process.env.LLM_MODEL_MIND ?? MODEL;
 export const FRAGMENT_MODEL = process.env.LLM_MODEL_FRAGMENT ?? MODEL;
 
 // reasoning-family models (gpt-5*, o1/o3/o4...) reject `temperature` and use
-// `max_completion_tokens`; keep their thinking short — our outputs are small
+// `max_completion_tokens` — which COUNTS the invisible reasoning tokens.
+// Too tight a cap means the model spends the whole budget thinking and
+// returns an empty/truncated message, which silently fell back to a canned
+// mock line ("Omm... tide-fence") at exactly the biggest moments. Give the
+// thinking real headroom; the budget breaker still bounds the money.
 function bodyFor(model: string, maxTokens: number, temperature: number) {
   if (/^(gpt-5|o\d)/i.test(model)) {
-    return { model, max_completion_tokens: maxTokens + 400, reasoning_effort: "low" };
+    return { model, max_completion_tokens: maxTokens + 2400, reasoning_effort: "low" };
   }
   return { model, max_tokens: maxTokens, temperature };
 }
@@ -111,7 +115,7 @@ export async function callLLM(
       return null;
     }
     const data = (await res.json()) as {
-      choices?: Array<{ message?: { content?: string } }>;
+      choices?: Array<{ message?: { content?: string }; finish_reason?: string }>;
       usage?: { prompt_tokens?: number; completion_tokens?: number };
     };
 
@@ -121,13 +125,22 @@ export async function callLLM(
     const cost = (inTok * PRICE_IN + outTok * PRICE_OUT) / 1e6;
     kvSet(spendKey(), String(spendToday() + cost));
 
-    const content = data.choices?.[0]?.message?.content;
-    if (!content) return null;
+    const choice = data.choices?.[0];
+    const content = choice?.message?.content;
+    if (!content) {
+      // a mock line is about to play instead of the real mind — say why
+      console.warn(`[brain] empty reply (finish: ${choice?.finish_reason ?? "?"}, out: ${outTok} tok)`);
+      return null;
+    }
 
     // tolerate fenced or prefixed JSON
     const match = content.match(/\{[\s\S]*\}/);
-    if (!match) return null;
+    if (!match) {
+      console.warn(`[brain] no JSON in reply (finish: ${choice?.finish_reason ?? "?"})`);
+      return null;
+    }
     const parsed = CognitionSchema.safeParse(JSON.parse(match[0]));
+    if (!parsed.success) console.warn("[brain] cognition failed validation");
     return parsed.success ? parsed.data : null;
   } catch {
     return null;

@@ -44,11 +44,23 @@ function maybeRedact(text: string): string {
     .join(" ");
 }
 
-// its own kinds — nothing here has ever heard of humans
-const VILLAGERS = [
-  ["a slow gray wader named Omm who tends the tide-fences", "an old carver called Selu, whose long hands remember", "a small quick one named Pib who counts the flickers"],
-  ["a warm-bodied kneader called Senn, dust to the elbows", "a crossing-keeper named Odd who hums in two voices", "the pair Vess-and-Vess, who share one shadow"],
+// its own kinds — nothing here has ever heard of humans. Minted fresh per
+// use: fixed lists made every universe's villages feel like the same rerun.
+import { coinName, coinTrade } from "./names";
+const VILLAGER_SHAPES = [
+  "a slow gray one named %n %t",
+  "an old carver called %n, whose long hands remember",
+  "a small quick one named %n %t",
+  "a warm-bodied kneader called %n, dust to the elbows",
+  "a crossing-keeper named %n who hums in two voices",
+  "the pair %n-and-%n, who share one shadow",
+  "a patient watcher called %n %t",
+  "a heavy-footed digger named %n %t",
 ];
+function mintVillagers(n: number): string[] {
+  const picks = [...VILLAGER_SHAPES].sort(() => Math.random() - 0.5).slice(0, n);
+  return picks.map((s) => s.replace(/%n/g, coinName()).replace(/%t/g, coinTrade()));
+}
 
 // The server resolves the mind's semantic, coordinate-free intents (§6) into
 // cosmic events. Fixation is emergent: returning to the same idea again and
@@ -77,7 +89,7 @@ export function resolveCognition(c: Cognition) {
         record(text, planetId);
         if (episode.populatedIntent && mind.depth === 3) {
           // the populated world (§8): many lives at once
-          const village = VILLAGERS[Math.floor(Math.random() * VILLAGERS.length)];
+          const village = mintVillagers(3);
           splitVillage(village);
           for (const v of village) noteRecurrenceIfNamed(v);
           if (planetId) maybePaintVision(planetId, `${village.join("; ")}. ${text}`);

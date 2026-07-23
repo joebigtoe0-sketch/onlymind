@@ -26,7 +26,7 @@ type Exhibit = {
   night?: number; // settlement lights (the small lives)
   fate?: "rubble" | "star";
   bare?: boolean; // a newborn: nothing unlocked yet
-  force?: Partial<Pick<FormParams, "liquid" | "liquidGlow" | "clouds" | "aurora" | "land" | "marble">>;
+  force?: Partial<FormParams>;
 };
 
 // two hand-picked palettes per archetype; two hash-ids each = four faces
@@ -87,6 +87,13 @@ function buildExhibits(): Exhibit[] {
     { id: "pv-earthlike", label: "an earth that never was", archetype: "ocean", colorA: "#0a2e4f", colorB: "#3fd2ff", force: { land: 0.95, clouds: 0.55 } },
     { id: "pv-rubble", label: "death i — a cloud of stones", archetype: "dust", colorA: "#3d2b1c", colorB: "#ffb87a", fate: "rubble" },
     { id: "pv-star", label: "death ii — a star now", archetype: "ember", colorA: "#3a1208", colorB: "#ff6a2a", fate: "star" },
+    // variant modes: sub-species that hash-roll inside each archetype
+    { id: "pv-moon", label: "a bare moon", archetype: "dust", colorA: "#5a5a62", colorB: "#9a9aa2", force: { liquid: 0, land: 0, marble: 0, clouds: 0, crater: 0.95, lumpy: 0.15, growth: 0, atmo: 0 } },
+    { id: "pv-gas", label: "a true gas giant", archetype: "storm", colorA: "#4a3416", colorB: "#ffc76a", force: { band: 1, turb: 0.4, crater: 0, liquid: 0, land: 0, lumpy: 0, marble: 0.2, growth: 0 } },
+    { id: "pv-lava", label: "lava and rock", archetype: "ember", colorA: "#17100c", colorB: "#ff6a2a", force: { liquid: 0.75, liquidGlow: 1, land: 0.5, growth: 0 } },
+    { id: "pv-waterworld", label: "a water-world", archetype: "ocean", colorA: "#0a2e4f", colorB: "#3fd2ff", force: { liquid: 0.95, land: 0.3, clouds: 0.4 } },
+    { id: "pv-continental", label: "continental — seas in the low places", archetype: "verdant", colorA: "#12301c", colorB: "#5aff9a", force: { liquid: 0.4, land: 0.95, growth: 0.55, clouds: 0.3 } },
+    { id: "pv-growth", label: "growth-blanketed", archetype: "verdant", colorA: "#1e3313", colorB: "#c8ff5a", force: { growth: 0.9, land: 0.9, liquid: 0.5 } },
   );
   return out;
 }
@@ -150,6 +157,7 @@ function PreviewPlanet({ ex, position }: { ex: Exhibit; position: [number, numbe
         uNight: { value: ex.night ?? 0 },
         uAurora: { value: fp.aurora * unlock },
         uAuroraCol: { value: fp.auroraColor },
+        uGrowth: { value: fp.growth * unlock },
       },
       vertexShader: PLANET_VERT,
       fragmentShader: PLANET_FRAG,
@@ -260,7 +268,7 @@ export function PreviewGallery() {
       flat
       dpr={[1, 1.75]}
       gl={{ antialias: false, powerPreference: "high-performance" }}
-      camera={{ position: [0, 0, 58], fov: 50, near: 0.1, far: 400 }}
+      camera={{ position: [0, 0, 66], fov: 50, near: 0.1, far: 400 }}
     >
       <color attach="background" args={["#05060b"]} />
       {/* grid sits behind the origin: the shader lights every body from the

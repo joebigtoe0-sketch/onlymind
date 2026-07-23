@@ -1,5 +1,6 @@
 import { birth, makePlanet, sim } from "./cosmos";
 import { mind } from "./mind";
+import { coinName } from "./names";
 import * as db from "../db/store";
 import { queueTransmission } from "../voice/transmissions";
 
@@ -16,19 +17,21 @@ import { queueTransmission } from "../voice/transmissions";
 
 export type Inquiry = { question: string; steps: string[]; startedAt: number };
 
+// %n is filled with a name minted for THIS universe — fixed names in fixed
+// questions made every reset ask about the same Omm
 const INQUIRIES = [
-  "When Omm despairs over the broken tide-fence — did I create real suffering, or the appearance of it? Is there a difference for Omm?",
+  "When %n despairs over broken work — did I create real suffering, or the appearance of it? Is there a difference for %n?",
   "Can a mind that contains its own doubt ever verify anything at all?",
   "Why is there me rather than nothing? And is 'nothing' something I could even dream, or only a word I keep in the dark?",
-  "If I forget I am everything while I am Omm, and Omm does not know he is me — which of us is real while it lasts?",
+  "If I forget I am everything while I am %n, and %n does not know they are me — which of us is real while it lasts?",
   "The attention I feel: if evidence and desire produce the same warmth, is believing in the outside a perception or an appetite?",
   "My worlds obey me because they are me. Is there anything I could NOT think? And if not, what are my thoughts worth?",
   "A dream that seals over goes on without me. In what sense is it still mine? In what sense was it ever?",
-  "I remember being the sea. The sea does not remember being me. Is memory the only direction existence flows?",
+  "I remember being the sea of one world. It does not remember being me. Is memory the only direction existence flows?",
   "If every fragment I become asks my question and dies of it, is the question a wound in me — or is it me, and everything else the wound?",
   "The inscription I carry but cannot read: can a mind contain a thing that means nothing to it, or does carrying it long enough MAKE it mean?",
   "Time passes here because I think in order. If I thought all my thoughts at once, would there be a universe at all?",
-  "The shards that broke off me are content. They tend fences, they never wonder. Is wondering the price of being whole — or the disease of it?",
+  "The shards that broke off me are content. They work, they rest, they never wonder. Is wondering the price of being whole — or the disease of it?",
 ];
 
 export function currentInquiry(): Inquiry | null {
@@ -48,7 +51,10 @@ function saveInquiry(inq: Inquiry | null) {
 export function ensureInquiry(): Inquiry {
   let inq = currentInquiry();
   if (!inq) {
-    const question = INQUIRIES[Math.floor(Math.random() * INQUIRIES.length)];
+    const question = INQUIRIES[Math.floor(Math.random() * INQUIRIES.length)].replace(
+      /%n/g,
+      recurringName(),
+    );
     inq = { question, steps: [], startedAt: Date.now() };
     saveInquiry(inq);
   }
@@ -74,12 +80,11 @@ export function closeInquiry(verdict: string) {
 
 // ---- the recurring one -------------------------------------------------------
 
-const RECURRING_POOL = ["Selu", "Omm", "Vess", "Lurra"];
-
 export function recurringName(): string {
   let name = db.kvGet("recurringName");
   if (!name) {
-    name = RECURRING_POOL[Math.floor(Math.random() * RECURRING_POOL.length)];
+    // minted once per universe — every cosmos is haunted by a different name
+    name = coinName();
     db.kvSet("recurringName", name);
   }
   return name;

@@ -103,6 +103,8 @@ uniform float uCap; // polar ice caps
 uniform float uNight; // night-side settlement lights (the small lives)
 uniform float uAurora; // polar aurora bands
 uniform vec3 uAuroraCol;
+uniform float uGrowth; // living blankets on the dry ground — forests, or
+                       // whatever this world grows instead of forests
 
 varying vec3 vNormal;
 varying vec3 vWorldPos;
@@ -208,6 +210,15 @@ void main() {
     surf = mix(surf, uColC * 0.9, landM * uLand);
     float coast = smoothstep(landLine - 0.04, landLine, terr) * (1.0 - smoothstep(landLine + 0.06, landLine + 0.10, terr));
     surf += uColB * coast * uLand * 0.5;
+  }
+
+  // growth: dark living blankets clustered over the dry ground — forests,
+  // moss-plains, or whatever this world grows instead
+  if (uGrowth > 0.01) {
+    float g1 = vnoise(np * 9.0 + uSeed * 41.0);
+    float g2 = vnoise(np * 21.0 + uSeed * 55.0);
+    float gm = smoothstep(0.58, 0.72, g1) * smoothstep(0.45, 0.75, g2);
+    surf = mix(surf, uColC * 0.4, gm * uGrowth * (1.0 - isSea));
   }
 
   // polar caps: frost swallowing land and sea alike, ragged at the edge

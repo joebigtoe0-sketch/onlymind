@@ -119,6 +119,7 @@ export function Planet({ seed }: { seed: PlanetData }) {
           uNight: { value: 0 },
           uAurora: { value: 0 },
           uAuroraCol: { value: fp.auroraColor },
+          uGrowth: { value: 0 },
         },
         vertexShader: PLANET_VERT,
         fragmentShader: PLANET_FRAG,
@@ -271,8 +272,9 @@ export function Planet({ seed }: { seed: PlanetData }) {
     u.uDead.value = becomesStar ? 0 : dead;
 
     // the mind ADDS to a world as it thinks there: liquid gathers first,
-    // then weather, then the polar lights — mass is the unlock
+    // then things grow, then weather, then the polar lights — mass unlocks
     u.uLiquid.value = fp.liquid * smoothstep01((m - 0.25) / 0.55);
+    u.uGrowth.value = fp.growth * smoothstep01((m - 0.4) / 0.6);
     u.uAurora.value = fp.aurora * smoothstep01((m - 0.9) / 0.9);
     // the small lives light fires you can see from orbit
     const st0 = useCosmos.getState();
