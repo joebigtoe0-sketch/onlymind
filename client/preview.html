@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>THE ONLY MIND — world styles</title>
+    <style>
+      html,
+      body,
+      #root {
+        margin: 0;
+        height: 100%;
+        background: #05060b;
+        overflow: hidden;
+      }
+      .pv-title {
+        position: fixed;
+        top: 18px;
+        left: 24px;
+        z-index: 10;
+        color: #8b91ac;
+        font-family: "Segoe UI", system-ui, sans-serif;
+        font-size: 11px;
+        letter-spacing: 0.32em;
+        text-transform: uppercase;
+        pointer-events: none;
+      }
+      .pv-title small {
+        display: block;
+        margin-top: 6px;
+        font-size: 9px;
+        letter-spacing: 0.18em;
+        color: #565b74;
+        text-transform: none;
+      }
+      .pv-label {
+        color: #7e849e;
+        font-family: "Segoe UI", system-ui, sans-serif;
+        font-size: 10px;
+        letter-spacing: 0.12em;
+        white-space: nowrap;
+        text-align: center;
+        pointer-events: none;
+        text-shadow: 0 1px 4px #000;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="pv-title">
+      world styles — every face the mind can dream
+      <small>drag to pan · scroll to zoom · in the cosmos these unlock as a world gains thought-mass</small>
+    </div>
+    <div id="root"></div>
+    <script type="module" src="/src/preview.tsx"></script>
+  </body>
+</html>

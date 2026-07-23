@@ -45,7 +45,7 @@ type Piece = {
   wz: number;
 };
 
-function makePieces(id: string): Piece[] {
+export function makePieces(id: string): Piece[] {
   return Array.from({ length: RUBBLE_N }, (_, i) => {
     const h = (s: number) => hash01(id, 100 + i * 13 + s);
     const th = h(1) * Math.PI * 2;
@@ -264,8 +264,10 @@ export function Planet({ seed }: { seed: PlanetData }) {
     const u = material.uniforms;
     u.uTime.value = performance.now() / 1000;
     u.uCoreLight.value = coreLightIntensity(tIgn, dyn.mood);
-    u.uHot.value = (2.4 * Math.exp(-Math.max(0, bloomAge) * 0.9) + inhabited * 1.1) * (1 - dead);
-    u.uEmissiveMul.value = (0.55 + 0.5 * Math.min(m, 2.5)) * (1 + inhabited * 0.5);
+    // inhabited = a warm presence, not a floodlight — the surface must stay
+    // legible while the mind is inside (the log IS being read right then)
+    u.uHot.value = (2.4 * Math.exp(-Math.max(0, bloomAge) * 0.9) + inhabited * 0.3) * (1 - dead);
+    u.uEmissiveMul.value = (0.55 + 0.5 * Math.min(m, 2.5)) * (1 + inhabited * 0.18);
     u.uDead.value = becomesStar ? 0 : dead;
 
     // the mind ADDS to a world as it thinks there: liquid gathers first,
@@ -312,11 +314,11 @@ export function Planet({ seed }: { seed: PlanetData }) {
       hm.opacity = Math.min(1, 0.2 + novaFlash * 0.55);
     } else {
       // the halo is an accent now, not a bath — surfaces carry the look
-      const hscale = radius * (4.6 + inhabited * 2.5 + flash * 5) * (1 - dead * 0.45);
+      const hscale = radius * (4.6 + inhabited * 1.2 + flash * 5) * (1 - dead * 0.45);
       hs.scale.set(hscale, hscale, 1);
       hm.color.copy(fp.colorB).lerp(ASH_HALO, dead);
       hm.opacity =
-        (0.035 + 0.05 * Math.min(1, m / 2.2) + flash + inhabited * 0.22) * (1 - dead * 0.8);
+        (0.035 + 0.05 * Math.min(1, m / 2.2) + flash + inhabited * 0.08) * (1 - dead * 0.8);
     }
 
     // dreamed rings + atmosphere follow the body's size and death
