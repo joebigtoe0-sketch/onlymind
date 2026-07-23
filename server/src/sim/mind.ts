@@ -1,5 +1,5 @@
 import type { Companion, Fragment } from "../../../shared/src/cosmos";
-import { coolMood, setFocus, sim, warmMood } from "./cosmos";
+import { coolMood, feedMass, setFocus, sim, warmMood } from "./cosmos";
 import * as db from "../db/store";
 
 // The mind state machine (§7): descend / split / inhabit / doubt / snap_back.
@@ -215,7 +215,7 @@ export function snapBack() {
     db.markPlanetDead(planetId, now);
   } else if (planet) {
     // lived-in: the dream leaves weight behind
-    planet.targetMass = Math.min(3, planet.targetMass + 0.3);
+    feedMass(planet, 0.35);
     planet.returns += 1;
     db.updatePlanetAccretion(planet.id, planet.targetMass, planet.returns);
     sim.events.push({

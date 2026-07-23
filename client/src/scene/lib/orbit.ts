@@ -45,6 +45,9 @@ export function planetPosition(seed: Planet, nowMs: number, out: THREE.Vector3):
   if (seed.parentId != null) {
     const parent = useCosmos.getState().planets.find((p) => p.id === seed.parentId);
     if (parent) {
+      // parents can grow huge — push the moon's orbit out past the surface
+      const clear = radiusForMass(parent.targetMass) * 1.5 + radiusForMass(seed.targetMass) + 0.3;
+      if (clear > seed.orbitRadius) out.multiplyScalar(clear / seed.orbitRadius);
       planetPosition(parent, nowMs, _parentPos);
       out.add(_parentPos);
     }
@@ -77,6 +80,9 @@ function localOrbit(seed: Planet, nowMs: number, out: THREE.Vector3): THREE.Vect
   return out.set(Math.cos(a) * r, 0, Math.sin(a) * r).applyQuaternion(orbitQuat(seed));
 }
 
+// The scale law: even the smallest world is ~3x the soul (~0.23), and mass
+// grown by weeks of thought (asymptote 9) makes a body ~10x that — the size
+// of a world IS how much has been thought inside it.
 export function radiusForMass(m: number): number {
-  return 0.24 + 0.52 * Math.sqrt(m);
+  return 0.55 + 0.95 * Math.pow(Math.max(0, m), 0.85);
 }

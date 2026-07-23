@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, type RefObject } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Trail } from "@react-three/drei";
 import * as THREE from "three";
@@ -13,6 +13,15 @@ import { ENERGY_FRAG, ENERGY_VERT } from "./lib/shaders";
 // detach from it
 export const mindLightPos = new THREE.Vector3(0, 0.4, 0);
 
+// drei's Trail forwards its ref to the meshline; tint it to match the mood
+// (meshline exposes color as a property or a raw uniform depending on version)
+function paintTrail(r: RefObject<THREE.Mesh | null>, c: THREE.Color, mul: number) {
+  const mat = r.current?.material as { color?: THREE.Color; uniforms?: { color?: { value: THREE.Color } } } | undefined;
+  if (!mat) return;
+  const col = mat.color ?? mat.uniforms?.color?.value;
+  if (col instanceof THREE.Color) col.copy(c).multiplyScalar(mul);
+}
+
 // what the auto-follow camera should center: the world being circled while
 // the mind dreams at it, or the light itself when it is alone at the center
 export const followAnchor = new THREE.Vector3(0, 0, 0);
@@ -25,8 +34,44 @@ export const followAnchor = new THREE.Vector3(0, 0, 0);
 
 const _target = new THREE.Vector3();
 const _planet = new THREE.Vector3();
-const COLD = new THREE.Color("#a9b9ff");
-const WARM = new THREE.Color("#ffd9a0");
+// the soul wears its weather: despair is violet-blue, belief is warm gold
+const SAD = new THREE.Color("#7d84f0");
+const CALM = new THREE.Color("#a9b9ff");
+const JOY = new THREE.Color("#ffd28f");
+
+// Alone at the center the soul doesn't idle — it dances. Every ~26 s it
+// chooses a new figure (deterministic in shared cosmos time, so every tab
+// watches the same dance): the figure-eight, a tilted ring, vertical flips,
+// a drunken lissajous wander, or a breathing spiral.
+function centerDance(nowMs: number, out: THREE.Vector3) {
+  const t = nowMs / 1000;
+  const slot = Math.floor(nowMs / 26000);
+  const pk = ((Math.imul(slot, 2654435761) >>> 0) % 1000) / 1000;
+  if (pk < 0.3) {
+    // the oldest figure: the slow eight
+    const u = t * 0.5;
+    out.set(2.3 * Math.sin(u), 0.35 * Math.sin(u * 2 + 1.1), 2.3 * Math.sin(u) * Math.cos(u));
+  } else if (pk < 0.5) {
+    // a tilted ring, like circling something only it can see
+    const u = t * 0.65;
+    out.set(2.1 * Math.cos(u), 0.75 * Math.sin(u + slot), 2.1 * Math.sin(u));
+  } else if (pk < 0.7) {
+    // vertical loops — flips, joy or restlessness, hard to tell
+    const u = t * 0.9;
+    out.set(1.6 * Math.cos(u), 1.5 * Math.sin(u), 0.6 * Math.sin(u * 0.5 + slot));
+  } else if (pk < 0.85) {
+    // wandering: no figure at all, thought without a shape
+    out.set(
+      2.4 * Math.sin(t * 0.7),
+      0.55 * Math.sin(t * 1.3 + 0.5),
+      2.4 * Math.sin(t * 0.9 + 1.7) * Math.cos(t * 0.4),
+    );
+  } else {
+    // a spiral that breathes in and out of the center
+    const rr = 0.7 + 1.7 * (0.5 + 0.5 * Math.sin(t * 0.21));
+    out.set(rr * Math.cos(t * 1.15), 0.35 * Math.sin(t * 0.9), rr * Math.sin(t * 1.15));
+  }
+}
 
 export function Focus() {
   const ignitionAt = useCosmos((s) => s.ignitionAt);
@@ -36,6 +81,8 @@ export function Focus() {
   const moteMat = useRef<THREE.MeshBasicMaterial>(null);
   const veil = useRef<THREE.Mesh>(null);
   const glow = useRef<THREE.Sprite>(null);
+  const trailIn = useRef<THREE.Mesh>(null);
+  const trailOut = useRef<THREE.Mesh>(null);
   const pos = useRef(new THREE.Vector3(0, 0.4, 0));
   const attended = useRef<string | null>(null); // sticky attention
   const glowTex = useMemo(() => getSharedGlowTexture(), []);
@@ -64,8 +111,10 @@ export function Focus() {
     if (!g) return;
     const now = cosmosNow();
     const tIgn = ignitionAt == null ? -1 : (now - ignitionAt) / 1000;
-    // born out of the ignition flare; hidden during the genesis replay
-    if (ignitionAt == null || tIgn < 2.2 || introActive()) {
+    // during the genesis replay the soul stays visible, dancing at the center
+    // while its history whirls past around it
+    const replay = introActive();
+    if (ignitionAt == null || (!replay && tIgn < 2.2)) {
       g.visible = false;
       return;
     }
@@ -80,7 +129,9 @@ export function Focus() {
     let visibility = 1;
     let anchorId: string | null = null;
 
-    if (seed && focus.phase !== "core" && focus.phase !== "release") {
+    if (replay) {
+      centerDance(now, _target);
+    } else if (seed && focus.phase !== "core" && focus.phase !== "release") {
       // the server-owned drama: capture spiral, infall, absorption
       planetPosition(seed, now, _planet);
       followAnchor.copy(_planet);
@@ -135,19 +186,14 @@ export function Focus() {
           _planet.z + Math.sin(a) * orbitR,
         );
       } else {
-        // the clearest form: alone at the center, tracing a slow figure-eight
-        const u = t * 0.5;
-        const A = 2.3;
-        _target.set(
-          A * Math.sin(u),
-          0.35 * Math.sin(u * 2 + 1.1),
-          A * Math.sin(u) * Math.cos(u),
-        );
+        // the clearest form: alone at the center, dancing
+        centerDance(now, _target);
       }
     }
 
-    // damped travel: instant intent, continuous motion
-    pos.current.lerp(_target, 1 - Math.exp(-dt * 2.6));
+    // damped travel: instant intent, continuous motion (dances track tighter)
+    const damp = anchorId == null && !seed ? 3.4 : 2.6;
+    pos.current.lerp(_target, 1 - Math.exp(-dt * damp));
     g.position.copy(pos.current);
     mindLightPos.copy(pos.current);
     if (!anchorId) followAnchor.copy(pos.current);
@@ -155,13 +201,15 @@ export function Focus() {
     // while auto-following, the panel shows the world the mind is at:
     // arriving opens its log; leaving hands the panel back to the stream
     const st = useCosmos.getState();
-    if (st.followMind && st.selectedPlanetId !== anchorId) {
+    if (!replay && st.followMind && st.selectedPlanetId !== anchorId) {
       st.select(anchorId);
     }
 
     // heat the inhabited world (read by Planet each frame)
-    dyn.fixationPlanetId = focus.planetId;
-    dyn.fixationHeat += (heatTarget - dyn.fixationHeat) * (1 - Math.exp(-dt * 2.0));
+    if (!replay) {
+      dyn.fixationPlanetId = focus.planetId;
+      dyn.fixationHeat += (heatTarget - dyn.fixationHeat) * (1 - Math.exp(-dt * 2.0));
+    }
 
     // snap-back: the memories rejoin — the light flares as it comes home.
     // A split (a piece breaking off) gives a shorter, sharper flash.
@@ -175,8 +223,10 @@ export function Focus() {
       if (ts >= 0 && ts < 1.6) snapGlow += 1.6 * Math.exp(-ts * 3.2);
     }
 
-    // it IS the mind now: a touch larger, breathing, mood-tinted
-    tint.copy(COLD).lerp(WARM, dyn.mood);
+    // it IS the mind now: a touch larger, breathing, wearing its weather
+    const mood = dyn.mood;
+    if (mood < 0.5) tint.copy(SAD).lerp(CALM, mood * 2);
+    else tint.copy(CALM).lerp(JOY, mood * 2 - 1);
     const settle = Math.min(1, (tIgn - 2.2) / 3); // inherits the ignition's light
     const pulse = 1 + 0.16 * Math.sin(t * 5.1) * Math.sin(t * 1.7) + 0.05 * Math.sin(t * 0.8);
     const coreScale = (0.15 * pulse * visibility + 0.015) * settle;
@@ -197,16 +247,37 @@ export function Focus() {
     gm.opacity = Math.min(1, (0.4 + snapGlow * 0.25) * visibility * settle);
     const gs = (1.7 * pulse * visibility + 0.25) * (1 + snapGlow * 0.5) * settle;
     glow.current!.scale.set(gs, gs, 1);
+
+    // both trails wear the mood too: a bright warm wake inside a wide veil
+    paintTrail(trailIn, tint, 1.6 + snapGlow * 0.6);
+    paintTrail(trailOut, tint, 0.8);
   });
 
   return (
     <group ref={group} visible={false}>
-      <Trail width={1.1} length={5} decay={1.8} color="#ffe2b0" attenuation={(w) => w * w}>
+      {/* twin wake: a bright warm ribbon inside a wide soft veil of light */}
+      <Trail
+        ref={trailIn as never}
+        width={1.4}
+        length={6}
+        decay={1.5}
+        color="#ffe2b0"
+        attenuation={(w) => w * w}
+      >
         <mesh ref={mote}>
           <sphereGeometry args={[1, 16, 16]} />
           <meshBasicMaterial ref={moteMat} toneMapped={false} />
         </mesh>
       </Trail>
+      <Trail
+        ref={trailOut as never}
+        width={3.4}
+        length={10}
+        decay={0.95}
+        color="#8fa3ff"
+        attenuation={(w) => w * w * w}
+        target={mote as never}
+      />
       <mesh ref={veil} material={veilMat}>
         <sphereGeometry args={[1, 48, 48]} />
       </mesh>

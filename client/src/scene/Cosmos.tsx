@@ -5,6 +5,7 @@ import { useCosmos } from "../store";
 import { dyn, tickDynamics } from "./dynamics";
 import { Core } from "./Core";
 import { Starfield } from "./Starfield";
+import { ShootingStars } from "./ShootingStars";
 import { Nebulae } from "./Nebulae";
 import { Planet } from "./Planet";
 import { Focus } from "./Focus";
@@ -35,6 +36,7 @@ export function Cosmos() {
       <Dynamics />
       <Nebulae />
       <Starfield />
+      <ShootingStars />
       <Core />
       {planets.map((p) => (
         <Planet key={p.id} seed={p} />

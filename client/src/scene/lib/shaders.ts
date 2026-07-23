@@ -2,33 +2,15 @@
 // ignition shockwave shell. Lighting is computed against the core at the
 // origin — no three.js lights in the scene at all.
 
+// Planet vertices are displaced on the GPU: living worlds can be gently
+// lumpy (uLumpy), and death (uDead) collapses the sphere into a cratered
+// potato-shaped rock along uAxis. Normals are re-derived from the displaced
+// surface by sampling two tangent neighbours.
 export const PLANET_VERT = /* glsl */ `
-varying vec3 vNormal;
-varying vec3 vWorldPos;
-varying vec3 vObjPos;
-
-void main() {
-  vObjPos = position;
-  vNormal = normalize(mat3(modelMatrix) * normal);
-  vec4 wp = modelMatrix * vec4(position, 1.0);
-  vWorldPos = wp.xyz;
-  gl_Position = projectionMatrix * viewMatrix * wp;
-}
-`;
-
-export const PLANET_FRAG = /* glsl */ `
-uniform vec3 uBase;
-uniform vec3 uColB; // the second dreamed color: bands, veins, glow
-uniform vec3 uEmissive;
-uniform float uEmissiveMul;
-uniform float uCoreLight;
-uniform float uTime;
 uniform float uSeed;
-uniform float uHot;
-uniform float uDead; // 0 alive .. 1 cold debris
-uniform float uBand; // latitude banding
-uniform float uCrack; // glowing veins
-uniform float uTurb; // turbulence
+uniform float uLumpy;
+uniform float uDead;
+uniform vec3 uAxis;
 
 varying vec3 vNormal;
 varying vec3 vWorldPos;
@@ -63,6 +45,112 @@ float fbm(vec3 p) {
   return s;
 }
 
+float surfDisp(vec3 n) {
+  // alive: broad gentle unevenness — a world, not a marble
+  float live = (fbm(n * 2.1 + uSeed * 3.1) - 0.5) * uLumpy;
+  // dead: the rock the dream cooled into — ridges gouged by deep bites
+  float rock = (fbm(n * 2.3 + uSeed * 5.7) - 0.5) * 0.52;
+  float gouge = pow(vnoise(n * 3.4 + uSeed * 9.3), 2.0) * 0.38;
+  return mix(live, rock - gouge, uDead);
+}
+
+vec3 shaped(vec3 n) {
+  vec3 ax = mix(vec3(1.0), uAxis, uDead);
+  return n * ax * (1.0 + surfDisp(n));
+}
+
+void main() {
+  vec3 n = normalize(position);
+  vObjPos = n;
+
+  vec3 up = abs(n.y) < 0.98 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
+  vec3 t = normalize(cross(up, n));
+  vec3 b = cross(n, t);
+  float e = 0.06;
+  vec3 p0 = shaped(n);
+  vec3 p1 = shaped(normalize(n + t * e));
+  vec3 p2 = shaped(normalize(n + b * e));
+  vec3 nrm = normalize(cross(p1 - p0, p2 - p0));
+
+  vNormal = normalize(mat3(modelMatrix) * nrm);
+  vec4 wp = modelMatrix * vec4(p0, 1.0);
+  vWorldPos = wp.xyz;
+  gl_Position = projectionMatrix * viewMatrix * wp;
+}
+`;
+
+export const PLANET_FRAG = /* glsl */ `
+uniform vec3 uBase;
+uniform vec3 uColB; // the second dreamed color: bands, veins, glow
+uniform vec3 uColC; // the third color: continents, marbled folds
+uniform vec3 uEmissive;
+uniform float uEmissiveMul;
+uniform float uCoreLight;
+uniform float uTime;
+uniform float uSeed;
+uniform float uHot;
+uniform float uDead; // 0 alive .. 1 cold cratered rock
+uniform float uBand; // latitude banding
+uniform float uCrack; // glowing veins
+uniform float uTurb; // turbulence
+uniform float uCrater; // impact craters on the living surface
+uniform float uLand; // continents rising out of a base-color sea
+uniform float uMarble; // domain-warped folds of all three colors
+
+varying vec3 vNormal;
+varying vec3 vWorldPos;
+varying vec3 vObjPos;
+
+float hash(vec3 p) {
+  p = fract(p * 0.3183099 + vec3(0.1, 0.2, 0.3));
+  p *= 17.0;
+  return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
+}
+
+float vnoise(vec3 p) {
+  vec3 i = floor(p);
+  vec3 f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  return mix(
+    mix(mix(hash(i), hash(i + vec3(1.0, 0.0, 0.0)), f.x),
+        mix(hash(i + vec3(0.0, 1.0, 0.0)), hash(i + vec3(1.0, 1.0, 0.0)), f.x), f.y),
+    mix(mix(hash(i + vec3(0.0, 0.0, 1.0)), hash(i + vec3(1.0, 0.0, 1.0)), f.x),
+        mix(hash(i + vec3(0.0, 1.0, 1.0)), hash(i + vec3(1.0, 1.0, 1.0)), f.x), f.y),
+    f.z);
+}
+
+float fbm(vec3 p) {
+  float a = 0.5;
+  float s = 0.0;
+  for (int i = 0; i < 3; i++) {
+    s += a * vnoise(p);
+    p *= 2.03;
+    a *= 0.5;
+  }
+  return s;
+}
+
+// sparse impact craters: some voronoi cells hold one, sized per cell.
+// Returns (bowl, rim): shadowed floor and light-catching ridge.
+vec2 craters(vec3 p, float density) {
+  vec3 ip = floor(p);
+  vec3 fp = fract(p);
+  float bowl = 0.0;
+  float rim = 0.0;
+  for (int x = -1; x <= 1; x++)
+  for (int y = -1; y <= 1; y++)
+  for (int z = -1; z <= 1; z++) {
+    vec3 g = vec3(float(x), float(y), float(z));
+    if (hash(ip + g + 7.7) > density) continue;
+    vec3 c = g + vec3(hash(ip + g), hash(ip + g + 17.1), hash(ip + g + 31.7)) - fp;
+    float r = 0.30 + 0.22 * hash(ip + g + 3.3);
+    float d = length(c) / r;
+    bowl = max(bowl, 1.0 - smoothstep(0.5, 1.0, d));
+    rim = max(rim, smoothstep(0.5, 0.8, d) * (1.0 - smoothstep(0.8, 1.2, d)));
+  }
+  return vec2(bowl, rim);
+}
+
 void main() {
   vec3 N = normalize(vNormal);
   vec3 V = normalize(cameraPosition - vWorldPos);
@@ -70,18 +158,51 @@ void main() {
 
   // wrapped lambert lit by the core: soft terminator, day side toward origin
   float lam = pow(clamp(dot(N, L) * 0.5 + 0.5, 0.0, 1.0), 1.5);
+  vec3 np = normalize(vObjPos);
 
   // the surface as dreamed: banding stretches noise into latitudes, the
   // second color pools where the noise gathers, turbulence roughens it
-  vec3 p = vObjPos;
+  vec3 p = np;
   p.y *= 1.0 + uBand * 2.8;
   float n = fbm(p * (2.2 + uTurb * 2.6) + uSeed * 7.31);
   vec3 surf = mix(uBase, uColB * 0.5, smoothstep(0.3, 0.75, n));
+
+  // marbled worlds: the three colors fold through each other, storm-warped
+  if (uMarble > 0.01) {
+    float q = fbm(np * 1.7 + uSeed * 4.9);
+    float m = fbm(np * (2.1 + uTurb * 1.4) + q * 2.6 + uSeed * 2.3);
+    vec3 m1 = mix(uBase, uColB * 0.85, smoothstep(0.2, 0.5, m));
+    vec3 tri = mix(m1, uColC, smoothstep(0.55, 0.82, m));
+    surf = mix(surf, tri, uMarble);
+  }
+
+  // continents: the third color rises out of a base-color sea; the coast
+  // between them holds a faint shore-glow of the second color
+  if (uLand > 0.01) {
+    float ln1 = fbm(np * 2.7 + uSeed * 11.0);
+    float landM = smoothstep(0.50, 0.56, ln1);
+    surf = mix(surf, uColC * 0.9, landM * uLand);
+    float coast = smoothstep(0.465, 0.50, ln1) * (1.0 - smoothstep(0.56, 0.60, ln1));
+    surf += uColB * coast * uLand * 0.5;
+  }
+
   vec3 albedo = surf * (0.75 + 0.5 * n);
+
+  // craters: living worlds by temperament, every dead one by history
+  float craterAmt = max(uCrater, uDead * 0.9);
+  vec2 cr = vec2(0.0);
+  if (craterAmt > 0.02) {
+    vec2 c1 = craters(np * 2.4 + uSeed * 13.0, 0.40);
+    vec2 c2 = craters(np * 5.5 + uSeed * 29.0, 0.30);
+    cr = max(c1, c2 * vec2(0.8, 0.6));
+  }
+  albedo *= 1.0 - cr.x * 0.42 * craterAmt;
+  albedo += albedo * cr.y * 0.6 * craterAmt;
+
   vec3 col = albedo * (0.12 + 1.05 * lam * uCoreLight);
 
   // glowing veins (ember, crystal): ridged noise cracks lit from within
-  float rn = abs(vnoise(vObjPos * (4.2 + uTurb * 3.0) + uSeed * 3.7) * 2.0 - 1.0);
+  float rn = abs(vnoise(np * (4.2 + uTurb * 3.0) + uSeed * 3.7) * 2.0 - 1.0);
   float vein = smoothstep(0.15, 0.02, rn) * uCrack;
   col += uColB * vein * (0.9 + 0.6 * sin(uTime * 0.9 + uSeed * 4.0));
 
@@ -93,10 +214,16 @@ void main() {
   // newborn heat: freshly accreted worlds run hot, then cool into themselves
   col += uEmissive * uHot;
 
-  // death: the dream went cold — desaturate, darken, a pale ash-blue remnant
-  float lum = dot(col, vec3(0.299, 0.587, 0.114));
-  vec3 ash = vec3(lum) * vec3(0.55, 0.62, 0.75) * 0.34 + vec3(0.010, 0.012, 0.018);
-  col = mix(col, ash, uDead);
+  // death: the dream cooled into rock. Grey-brown grain, crater-bitten,
+  // keeping only a ghost-tint of the world it was.
+  float grain = fbm(np * 7.0 + uSeed * 3.0);
+  vec3 rockTint = mix(vec3(0.30, 0.26, 0.22), vec3(0.16, 0.17, 0.20), smoothstep(0.3, 0.7, grain));
+  vec3 rock = (rockTint + uBase * 0.05) * (0.65 + 0.5 * grain);
+  rock *= 1.0 - cr.x * 0.6;
+  rock += rockTint * cr.y * 0.8;
+  rock *= 0.10 + 0.95 * lam * uCoreLight;
+  rock += vec3(0.010, 0.011, 0.014); // never fully swallowed by the dark
+  col = mix(col, rock, uDead);
 
   gl_FragColor = vec4(col, 1.0);
 }

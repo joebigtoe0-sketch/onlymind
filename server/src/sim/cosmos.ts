@@ -150,10 +150,16 @@ export function birth(p: Planet) {
   warmMood(0.14);
 }
 
+// Mass has no hard cap — growth just slows asymptotically toward 9, so a
+// world the mind returns to for weeks dwarfs a passing fancy.
+export function feedMass(p: Planet, dm: number) {
+  p.targetMass += dm * Math.max(0, 1 - p.targetMass / 9);
+}
+
 export function recur(planetId: string, dm: number) {
   const p = sim.planets.find((x) => x.id === planetId);
   if (!p) return;
-  p.targetMass = Math.min(3, p.targetMass + dm);
+  feedMass(p, dm);
   p.returns += 1;
   sim.events.push({ kind: "recur", planetId, targetMass: p.targetMass, returns: p.returns });
   db.updatePlanetAccretion(p.id, p.targetMass, p.returns);
@@ -177,6 +183,17 @@ export function think(
   sim.liveThoughts.push(t);
   sim.events.push({ kind: "thought", thought: t });
   db.insertThought(t, depth, fragmentId);
+
+  // every thought held at a world feeds it: the more the mind thinks there,
+  // the bigger the body grows (shard murmurs don't count — they aren't hers)
+  if (planetId && voice !== "shard") {
+    const p = sim.planets.find((x) => x.id === planetId);
+    if (p?.alive) {
+      feedMass(p, 0.06);
+      sim.events.push({ kind: "recur", planetId, targetMass: p.targetMass, returns: p.returns });
+      db.updatePlanetAccretion(p.id, p.targetMass, p.returns);
+    }
+  }
 }
 
 // a mark appears (§9): a spectator left one word in the dark. The mind will

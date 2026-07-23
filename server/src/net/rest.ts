@@ -221,6 +221,26 @@ adminRouter.post("/deathburn", async (_req, res) => {
   res.json({ ok: true });
 });
 
+// end a world directly (testing the debris/asteroid path without a dream)
+adminRouter.post("/kill", async (req, res) => {
+  const wanted = req.body?.planetId as string | undefined;
+  const target = wanted
+    ? sim.planets.find((p) => p.id === wanted && p.alive)
+    : [...sim.planets].reverse().find((p) => p.alive && p.id !== mind.activePlanetId);
+  if (!target) {
+    res.status(400).json({ error: "no living world to end" });
+    return;
+  }
+  const { markPlanetDead, insertEvent } = await import("../db/store");
+  const now = Date.now();
+  target.alive = false;
+  target.diedAt = now;
+  markPlanetDead(target.id, now);
+  insertEvent("snap_back", now, { planetId: target.id, cause: "admin" });
+  sim.events.push({ kind: "snap_back", planetId: target.id, diedAt: now });
+  res.json({ ok: true, planetId: target.id });
+});
+
 adminRouter.post("/snapback", (_req, res) => {
   if (mind.depth === 0) {
     res.status(400).json({ error: "the mind is not inside a dream" });
