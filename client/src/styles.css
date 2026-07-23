@@ -531,7 +531,8 @@ canvas {
   text-transform: uppercase;
   cursor: pointer;
   opacity: 0;
-  animation: wordmark-in 4s ease 18s forwards;
+  /* arrives with the rest of the chrome, not minutes into the watch */
+  animation: wordmark-in 4s ease 3.2s forwards;
 }
 
 .follow-box:hover {
@@ -572,7 +573,7 @@ canvas {
   backdrop-filter: blur(8px);
   font-family: "Segoe UI", system-ui, sans-serif;
   opacity: 0;
-  animation: wordmark-in 4s ease 20s forwards;
+  animation: wordmark-in 4s ease 3.2s forwards;
 }
 
 .ca-label {

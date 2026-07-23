@@ -26,9 +26,14 @@ const INTRO_MAX_S = 13;
 let introIgnitionAt: number | null = null;
 let introStart = 0;
 let introDurS = INTRO_MAX_S;
+let introConsidered = false; // one shot per page load — NOT per snapshot
 
 export function maybeBeginIntro(ignitionAt: number | null, bodyCount = 0) {
-  if (ignitionAt == null || introIgnitionAt != null) return;
+  // snapshots also arrive on every websocket RECONNECT (server restart, a
+  // network blip, waking the laptop) — only the first one may start a replay,
+  // or the universe appears to "reload" mid-watch
+  if (ignitionAt == null || introConsidered) return;
+  introConsidered = true;
   const ageSec = (cosmosNow() - ignitionAt) / 1000;
   if (ageSec > 90) {
     introDurS = Math.min(INTRO_MAX_S, Math.max(INTRO_MIN_S, 1.5 + bodyCount * 0.95));

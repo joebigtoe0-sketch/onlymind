@@ -9,7 +9,7 @@ import { coreLightIntensity } from "./lib/coreLight";
 import { planetPosition, radiusForMass } from "./lib/orbit";
 import { formParams, hash01 } from "./lib/forms";
 import { getRingTexture, getSharedGlowTexture } from "./lib/textures";
-import { PLANET_FRAG, PLANET_VERT, SHELL_FRAG, SHELL_VERT } from "./lib/shaders";
+import { CLOUD_FRAG, CLOUD_VERT, PLANET_FRAG, PLANET_VERT, SHELL_FRAG, SHELL_VERT } from "./lib/shaders";
 
 // A held thought that accreted into a body (§5). Mass drives everything:
 // radius, inner glow, halo. Recurrence raises targetMass; the visible mass
@@ -19,6 +19,11 @@ import { PLANET_FRAG, PLANET_VERT, SHELL_FRAG, SHELL_VERT } from "./lib/shaders"
 const _pos = new THREE.Vector3();
 const ASH_HALO = new THREE.Color("#7d8aa8");
 const STAR_WHITE = new THREE.Color("#fff6e8");
+
+const smoothstep01 = (x: number) => {
+  const t = Math.max(0, Math.min(1, x));
+  return t * t * (3 - 2 * t);
+};
 
 // A world dies one of two deaths, fixed per world (heavier worlds lean
 // toward collapse into light): it SHATTERS into a slow cloud of tumbling
@@ -75,6 +80,7 @@ export function Planet({ seed }: { seed: PlanetData }) {
   const atmo = useRef<THREE.Mesh>(null);
   const burst = useRef<THREE.Mesh>(null);
   const rubble = useRef<THREE.Group>(null);
+  const cloud = useRef<THREE.Mesh>(null);
   const displayedMass = useRef(0.02);
 
   // the look, exactly as the mind dreamed it (or derived for older worlds)
@@ -106,9 +112,35 @@ export function Planet({ seed }: { seed: PlanetData }) {
           uMarble: { value: fp.marble },
           uLumpy: { value: fp.lumpy },
           uAxis: { value: fp.axis },
+          uLiquid: { value: 0 },
+          uLiquidGlow: { value: fp.liquidGlow },
+          uLiquidCol: { value: fp.liquidColor },
+          uCap: { value: fp.cap },
+          uNight: { value: 0 },
+          uAurora: { value: 0 },
+          uAuroraCol: { value: fp.auroraColor },
         },
         vertexShader: PLANET_VERT,
         fragmentShader: PLANET_FRAG,
+      }),
+    [fp, seed.phase0],
+  );
+
+  // the cloud layer: its own shell, turning at its own speed
+  const cloudMat = useMemo(
+    () =>
+      new THREE.ShaderMaterial({
+        uniforms: {
+          uTime: { value: 0 },
+          uSeed: { value: seed.phase0 },
+          uCover: { value: 0 },
+          uCoreLight: { value: 1 },
+          uTint: { value: new THREE.Color(1, 1, 1).lerp(fp.colorB, 0.15) },
+        },
+        vertexShader: CLOUD_VERT,
+        fragmentShader: CLOUD_FRAG,
+        transparent: true,
+        depthWrite: false,
       }),
     [fp, seed.phase0],
   );
@@ -236,6 +268,30 @@ export function Planet({ seed }: { seed: PlanetData }) {
     u.uEmissiveMul.value = (0.55 + 0.5 * Math.min(m, 2.5)) * (1 + inhabited * 0.5);
     u.uDead.value = becomesStar ? 0 : dead;
 
+    // the mind ADDS to a world as it thinks there: liquid gathers first,
+    // then weather, then the polar lights — mass is the unlock
+    u.uLiquid.value = fp.liquid * smoothstep01((m - 0.25) / 0.55);
+    u.uAurora.value = fp.aurora * smoothstep01((m - 0.9) / 0.9);
+    // the small lives light fires you can see from orbit
+    const st0 = useCosmos.getState();
+    let dwellersHere = 0;
+    for (const d of st0.dwellers) if (d.planetId === seed.id) dwellersHere++;
+    u.uNight.value = Math.min(1, dwellersHere * 0.34) * (1 - dead);
+
+    // clouds arrive once a world has been thought about enough
+    if (cloud.current) {
+      const cover = fp.clouds * smoothstep01((m - 0.55) / 0.75);
+      const cvisible = cover > 0.03 && dead < 0.5;
+      cloud.current.visible = cvisible;
+      if (cvisible) {
+        cloud.current.scale.setScalar(Math.max(0.001, bodyScale * 1.045));
+        cloud.current.rotation.y = age * (fp.spin * 0.55 + 0.012);
+        cloudMat.uniforms.uTime.value = performance.now() / 1000;
+        cloudMat.uniforms.uCover.value = cover * (1 - dead);
+        cloudMat.uniforms.uCoreLight.value = u.uCoreLight.value;
+      }
+    }
+
     if (nova) {
       // burning on: the surface floods with near-white light, breathing
       const flare = 2.6 * Math.exp(-since * 1.4);
@@ -255,11 +311,12 @@ export function Planet({ seed }: { seed: PlanetData }) {
       hm.color.copy(fp.colorB).lerp(STAR_WHITE, 0.6);
       hm.opacity = Math.min(1, 0.2 + novaFlash * 0.55);
     } else {
-      const hscale = radius * (7.5 + inhabited * 2.5 + flash * 4) * (1 - dead * 0.45);
+      // the halo is an accent now, not a bath — surfaces carry the look
+      const hscale = radius * (4.6 + inhabited * 2.5 + flash * 5) * (1 - dead * 0.45);
       hs.scale.set(hscale, hscale, 1);
       hm.color.copy(fp.colorB).lerp(ASH_HALO, dead);
       hm.opacity =
-        (0.09 + 0.11 * Math.min(1, m / 2.2) + flash + inhabited * 0.22) * (1 - dead * 0.8);
+        (0.035 + 0.05 * Math.min(1, m / 2.2) + flash + inhabited * 0.22) * (1 - dead * 0.8);
     }
 
     // dreamed rings + atmosphere follow the body's size and death
@@ -326,6 +383,11 @@ export function Planet({ seed }: { seed: PlanetData }) {
       {fp.atmo > 0.05 && (
         <mesh ref={atmo} material={atmoMat}>
           <sphereGeometry args={[1, 32, 32]} />
+        </mesh>
+      )}
+      {fp.clouds > 0.05 && (
+        <mesh ref={cloud} material={cloudMat} visible={false}>
+          <sphereGeometry args={[1, 40, 40]} />
         </mesh>
       )}
       <mesh ref={burst} material={burstMat} visible={false}>

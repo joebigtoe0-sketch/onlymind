@@ -96,6 +96,13 @@ uniform float uTurb; // turbulence
 uniform float uCrater; // impact craters on the living surface
 uniform float uLand; // continents rising out of a base-color sea
 uniform float uMarble; // domain-warped folds of all three colors
+uniform float uLiquid; // how much of the lowland is living, moving liquid
+uniform float uLiquidGlow; // 0 = dark water .. 1 = lava/light-sea, self-lit
+uniform vec3 uLiquidCol; // the liquid's color — any color a dream wants
+uniform float uCap; // polar ice caps
+uniform float uNight; // night-side settlement lights (the small lives)
+uniform float uAurora; // polar aurora bands
+uniform vec3 uAuroraCol;
 
 varying vec3 vNormal;
 varying vec3 vWorldPos;
@@ -176,43 +183,87 @@ void main() {
     surf = mix(surf, tri, uMarble);
   }
 
-  // continents: the third color rises out of a base-color sea; the coast
+  // one shared terrain field decides what is lowland and what rises:
+  // liquid fills the low places, continents stand above the line
+  float terr = fbm(np * 2.7 + uSeed * 11.0);
+  float level = 0.28 + uLiquid * 0.34; // more liquid = higher the line
+  float isSea = 0.0;
+
+  // the moving liquid: churning, glinting, any color the dream chose —
+  // dark seas borrow the core's light, lava and light-seas burn alone
+  if (uLiquid > 0.02) {
+    isSea = 1.0 - smoothstep(level, level + 0.05, terr);
+    float churn = fbm(np * 6.0 + vec3(uTime * 0.09, uTime * 0.06, 0.0) + uSeed * 5.0);
+    float glint = pow(fbm(np * 9.0 - vec3(uTime * 0.13, 0.0, uTime * 0.08) + uSeed), 4.0);
+    vec3 liquid = uLiquidCol * (0.5 + 0.55 * churn) + uLiquidCol * glint * 1.6;
+    liquid += uLiquidCol * uLiquidGlow * (0.8 + 0.6 * churn);
+    surf = mix(surf, liquid, isSea);
+  }
+
+  // continents: the third color stands above the waterline; the coast
   // between them holds a faint shore-glow of the second color
   if (uLand > 0.01) {
-    float ln1 = fbm(np * 2.7 + uSeed * 11.0);
-    float landM = smoothstep(0.50, 0.56, ln1);
+    float landLine = max(level + 0.04, 0.47);
+    float landM = smoothstep(landLine, landLine + 0.06, terr);
     surf = mix(surf, uColC * 0.9, landM * uLand);
-    float coast = smoothstep(0.465, 0.50, ln1) * (1.0 - smoothstep(0.56, 0.60, ln1));
+    float coast = smoothstep(landLine - 0.04, landLine, terr) * (1.0 - smoothstep(landLine + 0.06, landLine + 0.10, terr));
     surf += uColB * coast * uLand * 0.5;
+  }
+
+  // polar caps: frost swallowing land and sea alike, ragged at the edge
+  if (uCap > 0.01) {
+    float capEdge = (fbm(np * 4.0 + uSeed * 17.0) - 0.5) * 0.24;
+    float cap = smoothstep(0.99 - uCap * 0.5, 1.04 - uCap * 0.5, abs(np.y) + capEdge);
+    surf = mix(surf, vec3(0.84, 0.89, 0.97), cap);
+    isSea *= 1.0 - cap;
   }
 
   vec3 albedo = surf * (0.75 + 0.5 * n);
 
-  // craters: living worlds by temperament, every dead one by history
+  // craters: living worlds by temperament, every dead one by history —
+  // but the liquid heals; craters keep to dry ground
   float craterAmt = max(uCrater, uDead * 0.9);
   vec2 cr = vec2(0.0);
   if (craterAmt > 0.02) {
     vec2 c1 = craters(np * 2.4 + uSeed * 13.0, 0.40);
     vec2 c2 = craters(np * 5.5 + uSeed * 29.0, 0.30);
     cr = max(c1, c2 * vec2(0.8, 0.6));
+    cr *= 1.0 - isSea * 0.9;
   }
   albedo *= 1.0 - cr.x * 0.42 * craterAmt;
   albedo += albedo * cr.y * 0.6 * craterAmt;
 
-  vec3 col = albedo * (0.12 + 1.05 * lam * uCoreLight);
+  // the surface carries the look now — light it properly
+  vec3 col = albedo * (0.16 + 1.3 * lam * uCoreLight);
 
   // glowing veins (ember, crystal): ridged noise cracks lit from within
   float rn = abs(vnoise(np * (4.2 + uTurb * 3.0) + uSeed * 3.7) * 2.0 - 1.0);
   float vein = smoothstep(0.15, 0.02, rn) * uCrack;
   col += uColB * vein * (0.9 + 0.6 * sin(uTime * 0.9 + uSeed * 4.0));
 
-  // the body glows from within; rim brighter (fresnel), breathing slowly
+  // a restrained inner glow: the rim carries it, the face stays legible
   float fres = pow(1.0 - clamp(dot(N, V), 0.0, 1.0), 2.6);
   float pulse = 0.85 + 0.15 * sin(uTime * 0.7 + uSeed * 6.28);
-  col += uEmissive * uEmissiveMul * (0.20 + 0.55 * fres) * pulse;
+  col += uEmissive * uEmissiveMul * (0.05 + 0.42 * fres) * pulse;
 
   // newborn heat: freshly accreted worlds run hot, then cool into themselves
   col += uEmissive * uHot;
+
+  // aurora: shivering light-bands ringing the poles
+  if (uAurora > 0.01) {
+    float ay = abs(np.y);
+    float band = smoothstep(0.55, 0.72, ay) * (1.0 - smoothstep(0.8, 0.95, ay));
+    float flick = fbm(np * 2.6 + vec3(0.0, uTime * 0.22, 0.0) + uSeed * 7.0);
+    col += uAuroraCol * band * uAurora * (0.35 + 0.9 * flick) * (0.6 + 0.6 * fres);
+  }
+
+  // the small lives: settlement lights freckling the night side's dry land
+  if (uNight > 0.01) {
+    float darkSide = 1.0 - clamp(dot(N, L) * 0.5 + 0.5, 0.0, 1.0);
+    float cityN = vnoise(np * 13.0 + uSeed * 23.0);
+    float cities = smoothstep(0.8, 0.94, cityN) * smoothstep(0.25, 0.7, darkSide) * uNight;
+    col += vec3(1.0, 0.82, 0.5) * cities * (1.0 - isSea) * 1.5;
+  }
 
   // death: the dream cooled into rock. Grey-brown grain, crater-bitten,
   // keeping only a ghost-tint of the world it was.
@@ -367,6 +418,55 @@ void main() {
   col += vec3(1.0) * pow(fres, 6.0) * 0.2 * uIntensity; // faint white edge
 
   float a = clamp(fres * veil, 0.0, 1.0) * 0.7;
+  gl_FragColor = vec4(col, a);
+}
+`;
+
+// A world's cloud layer: a slightly larger shell turning at its own speed,
+// so the surface slides underneath — real parallax, real weather.
+export const CLOUD_VERT = /* glsl */ `
+varying vec3 vNormal;
+varying vec3 vWorldPos;
+varying vec3 vObjPos;
+
+void main() {
+  vObjPos = position;
+  vNormal = normalize(mat3(modelMatrix) * normal);
+  vec4 wp = modelMatrix * vec4(position, 1.0);
+  vWorldPos = wp.xyz;
+  gl_Position = projectionMatrix * viewMatrix * wp;
+}
+`;
+
+export const CLOUD_FRAG = /* glsl */ `
+uniform float uTime;
+uniform float uSeed;
+uniform float uCover; // 0 none .. 1 storm-wrapped
+uniform float uCoreLight;
+uniform vec3 uTint;
+
+varying vec3 vNormal;
+varying vec3 vWorldPos;
+varying vec3 vObjPos;
+
+${NOISE_GLSL}
+
+void main() {
+  vec3 N = normalize(vNormal);
+  vec3 V = normalize(cameraPosition - vWorldPos);
+  vec3 L = normalize(-vWorldPos);
+  float lam = pow(clamp(dot(N, L) * 0.5 + 0.5, 0.0, 1.0), 1.4);
+  vec3 np = normalize(vObjPos);
+
+  // banked, slowly-warping cloud masses
+  float q = fbm(np * 2.2 + uSeed * 13.0 + vec3(uTime * 0.008, 0.0, 0.0));
+  float m = fbm(np * 3.6 + q * 1.8 + uSeed * 29.0);
+  float a = smoothstep(0.62 - uCover * 0.28, 0.86 - uCover * 0.22, m) * 0.85 * step(0.02, uCover);
+
+  float rim = pow(1.0 - abs(dot(N, V)), 2.0);
+  a *= 1.0 - rim * 0.6; // no hard shell edge at the limb
+
+  vec3 col = uTint * (0.2 + 1.2 * lam * uCoreLight);
   gl_FragColor = vec4(col, a);
 }
 `;

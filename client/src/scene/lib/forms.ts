@@ -19,6 +19,13 @@ export type FormParams = {
   crater: number; // impact craters while alive
   land: number; // continents of colorC over a colorA sea
   marble: number; // domain-warped tri-color folds
+  liquid: number; // moving liquid filling the lowlands
+  liquidGlow: number; // 0 dark water .. 1 lava / light-sea
+  liquidColor: THREE.Color;
+  cap: number; // polar ice caps
+  clouds: number; // rotating cloud shell coverage
+  aurora: number; // polar aurora bands
+  auroraColor: THREE.Color;
   axis: THREE.Vector3; // the potato axes death collapses into
   spin: number; // signed rad/s of surface rotation
   rings: boolean;
@@ -33,17 +40,22 @@ type ArchTraits = {
   crater: number;
   land: number;
   marble: number;
+  liquid: number;
+  liquidGlow: number;
+  cap: number;
+  clouds: number;
+  aurora: number;
 };
 
 const ARCH: Record<WorldForm["archetype"], ArchTraits> = {
-  ember: { band: 0.1, crack: 0.95, turb: 0.6, atmo: 0.15, lumpy: 0.05, crater: 0.12, land: 0, marble: 0.35 },
-  ocean: { band: 0.35, crack: 0.0, turb: 0.3, atmo: 0.55, lumpy: 0.0, crater: 0.0, land: 0.8, marble: 0.15 },
-  storm: { band: 0.95, crack: 0.0, turb: 0.85, atmo: 0.6, lumpy: 0.0, crater: 0.0, land: 0, marble: 0.55 },
-  ice: { band: 0.15, crack: 0.3, turb: 0.15, atmo: 0.35, lumpy: 0.08, crater: 0.55, land: 0.2, marble: 0.1 },
-  verdant: { band: 0.2, crack: 0.0, turb: 0.6, atmo: 0.45, lumpy: 0.04, crater: 0.1, land: 0.9, marble: 0.1 },
-  dust: { band: 0.55, crack: 0.0, turb: 0.25, atmo: 0.1, lumpy: 0.3, crater: 0.9, land: 0, marble: 0.0 },
-  crystal: { band: 0.0, crack: 0.75, turb: 0.95, atmo: 0.2, lumpy: 0.18, crater: 0.0, land: 0, marble: 0.7 },
-  void: { band: 0.0, crack: 0.18, turb: 0.2, atmo: 0.0, lumpy: 0.1, crater: 0.3, land: 0, marble: 0.15 },
+  ember: { band: 0.1, crack: 0.95, turb: 0.6, atmo: 0.15, lumpy: 0.05, crater: 0.12, land: 0, marble: 0.35, liquid: 0.55, liquidGlow: 1, cap: 0, clouds: 0.1, aurora: 0.05 },
+  ocean: { band: 0.35, crack: 0.0, turb: 0.3, atmo: 0.55, lumpy: 0.0, crater: 0.0, land: 0.8, marble: 0.15, liquid: 0.9, liquidGlow: 0.06, cap: 0.22, clouds: 0.45, aurora: 0.05 },
+  storm: { band: 0.95, crack: 0.0, turb: 0.85, atmo: 0.6, lumpy: 0.0, crater: 0.0, land: 0, marble: 0.55, liquid: 0.2, liquidGlow: 0.1, cap: 0, clouds: 0.8, aurora: 0.2 },
+  ice: { band: 0.15, crack: 0.3, turb: 0.15, atmo: 0.35, lumpy: 0.08, crater: 0.55, land: 0.2, marble: 0.1, liquid: 0.25, liquidGlow: 0, cap: 0.75, clouds: 0.2, aurora: 0.4 },
+  verdant: { band: 0.2, crack: 0.0, turb: 0.6, atmo: 0.45, lumpy: 0.04, crater: 0.1, land: 0.9, marble: 0.1, liquid: 0.6, liquidGlow: 0.05, cap: 0.2, clouds: 0.5, aurora: 0.05 },
+  dust: { band: 0.55, crack: 0.0, turb: 0.25, atmo: 0.1, lumpy: 0.3, crater: 0.9, land: 0, marble: 0.0, liquid: 0.06, liquidGlow: 0, cap: 0.05, clouds: 0.08, aurora: 0 },
+  crystal: { band: 0.0, crack: 0.75, turb: 0.95, atmo: 0.2, lumpy: 0.18, crater: 0.0, land: 0, marble: 0.7, liquid: 0.35, liquidGlow: 0.8, cap: 0, clouds: 0.1, aurora: 0.3 },
+  void: { band: 0.0, crack: 0.18, turb: 0.2, atmo: 0.0, lumpy: 0.1, crater: 0.3, land: 0, marble: 0.15, liquid: 0.15, liquidGlow: 0.7, cap: 0, clouds: 0, aurora: 0.5 },
 };
 
 // stable fallback for worlds dreamed before forms existed
@@ -92,6 +104,13 @@ export function formParams(seed: Planet): FormParams {
     .lerp(colorB, 0.3 + 0.4 * j(8))
     .offsetHSL((j(9) - 0.5) * 0.5, 0.1, 0.05);
 
+  // the liquid: lava for ember (hot, self-lit), deep base-color seas for
+  // water worlds, glowing colorC for crystal/void — any color a dream needs
+  const liquidColor =
+    a.liquidGlow > 0.5
+      ? colorC.clone().offsetHSL((j(17) - 0.5) * 0.3, 0.15, 0.12)
+      : colorA.clone().multiplyScalar(0.8).offsetHSL(0, 0.08, -0.04);
+
   const fp: FormParams = {
     colorA,
     colorB,
@@ -104,6 +123,13 @@ export function formParams(seed: Planet): FormParams {
     crater: clamp01(a.crater + (j(5) - 0.5) * 0.4),
     land: clamp01(a.land + (j(6) - 0.5) * 0.35),
     marble: clamp01(a.marble + (j(7) - 0.5) * 0.45),
+    liquid: clamp01(a.liquid * (0.55 + 0.9 * j(18))),
+    liquidGlow: a.liquidGlow,
+    liquidColor,
+    cap: clamp01(a.cap * (0.4 + 1.2 * j(19))),
+    clouds: clamp01(a.clouds * (0.5 + j(20))),
+    aurora: clamp01(a.aurora * (0.4 + 1.2 * j(21))),
+    auroraColor: colorB.clone().lerp(colorC, j(22)).offsetHSL(0.08, 0.2, 0.15),
     axis: new THREE.Vector3(
       1 + (j(10) - 0.5) * 0.55,
       1 + (j(11) - 0.5) * 0.55,
@@ -114,10 +140,18 @@ export function formParams(seed: Planet): FormParams {
   };
 
   // rare temperament breaks, so the sky holds surprises: a world dreamed in
-  // many colors at once, or one that is nearly all continent
+  // many colors at once, one that is nearly all continent, a sea of light
+  // where no light should be, or auroras far from any pole that earns them
   const wild = j(15);
   if (wild < 0.14) fp.marble = Math.max(fp.marble, 0.75);
   else if (wild > 0.9) fp.land = Math.max(fp.land, 0.85);
+  const wild2 = j(16);
+  if (wild2 < 0.08) {
+    fp.liquid = Math.max(fp.liquid, 0.6);
+    fp.liquidGlow = Math.max(fp.liquidGlow, 0.85);
+  } else if (wild2 > 0.9) {
+    fp.aurora = Math.max(fp.aurora, 0.45);
+  }
 
   return fp;
 }
