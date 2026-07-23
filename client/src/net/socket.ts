@@ -41,7 +41,8 @@ export function connectSocket() {
       st.setConnected(true);
     } else if (msg.type === "snapshot") {
       syncServerTime(msg.serverTime);
-      maybeBeginIntro(msg.ignitionAt); // an old universe replays its genesis
+      // an old universe replays its genesis — for as long as its history earns
+      maybeBeginIntro(msg.ignitionAt, msg.planets.length);
       dyn.moodTarget = msg.mood;
       dyn.instrTarget = { ...msg.instruments };
       st.applySnapshot(msg);

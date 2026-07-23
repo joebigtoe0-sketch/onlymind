@@ -13,20 +13,25 @@ export function cosmosNow(): number {
 
 // ---- the genesis replay ------------------------------------------------------
 // Joining an old universe still begins in the dark: the client compresses the
-// whole history — ignition, star-front, every birth and death — into ~14
-// seconds of fast-forward, then hands over to real time. A fresh universe
-// (younger than ~90 s) plays its true opening instead.
+// whole history — ignition, star-front, every birth and death — into a
+// fast-forward, then hands over to real time. The sweep lasts as long as the
+// story deserves: ~1s per world ever born (dead ones included), floored at 4s
+// for a young cosmos, capped at 13s for one that has run for days. A fresh
+// universe (younger than ~90 s) plays its true opening instead.
 
 const INTRO_DARK_S = 1.3;
-const INTRO_DUR_S = 13;
+const INTRO_MIN_S = 4;
+const INTRO_MAX_S = 13;
 
 let introIgnitionAt: number | null = null;
 let introStart = 0;
+let introDurS = INTRO_MAX_S;
 
-export function maybeBeginIntro(ignitionAt: number | null) {
+export function maybeBeginIntro(ignitionAt: number | null, bodyCount = 0) {
   if (ignitionAt == null || introIgnitionAt != null) return;
   const ageSec = (cosmosNow() - ignitionAt) / 1000;
   if (ageSec > 90) {
+    introDurS = Math.min(INTRO_MAX_S, Math.max(INTRO_MIN_S, 1.5 + bodyCount * 0.95));
     introIgnitionAt = ignitionAt;
     introStart = performance.now();
   }
@@ -35,7 +40,7 @@ export function maybeBeginIntro(ignitionAt: number | null) {
 export function introActive(): boolean {
   if (introIgnitionAt == null) return false;
   const s = (performance.now() - introStart) / 1000;
-  if (s >= INTRO_DARK_S + INTRO_DUR_S) {
+  if (s >= INTRO_DARK_S + introDurS) {
     introIgnitionAt = null;
     return false;
   }
@@ -53,7 +58,7 @@ export function sceneNow(): number {
   if (introIgnitionAt == null) return cosmosNow();
   const s = (performance.now() - introStart) / 1000;
   if (s < INTRO_DARK_S) return introIgnitionAt; // the dark before the light
-  const k = smoothstep((s - INTRO_DARK_S) / INTRO_DUR_S);
+  const k = smoothstep((s - INTRO_DARK_S) / introDurS);
   const target = cosmosNow();
   if (k >= 1) {
     introIgnitionAt = null;
