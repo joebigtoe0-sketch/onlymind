@@ -38,6 +38,10 @@ export const ThoughtSchema = z.object({
   planetId: z.string().nullable(), // null = thought at the core
   // "other" = the invented companion; "shard" = a holder-shard dweller murmuring
   voice: z.enum(["self", "other", "shard"]).optional(),
+  // where in the forgetting this was thought: 0 = the whole mind awake at its
+  // surface; deeper = further hidden inside a dream. Speaker = who it was.
+  depth: z.number().int().optional(),
+  speaker: z.string().nullable().optional(),
 });
 export type Thought = z.infer<typeof ThoughtSchema>;
 

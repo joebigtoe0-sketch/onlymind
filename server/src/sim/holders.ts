@@ -233,7 +233,7 @@ export function startDwellerMurmur() {
         first,
       );
       // depth 5: outside both the whole-mind's and any fragment's recall
-      think(line, d.planetId, 5, d.id, "shard");
+      think(line, d.planetId, 5, d.id, "shard", d.name ?? null);
     }
     const base = holders.dwellers.length > 0 ? 120000 : 300000;
     setTimeout(loop, base / Math.max(1, Math.min(6, holders.dwellers.length / 8)) + Math.random() * 90000);

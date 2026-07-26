@@ -55,21 +55,75 @@ export function Panels() {
   );
 }
 
+// who is speaking, and from how deep in the forgetting
+function streamTag(t: {
+  voice?: "self" | "other" | "shard";
+  depth?: number;
+  speaker?: string | null;
+  planetId: string | null;
+}): { label: string; cls: string } {
+  if (t.voice === "shard") {
+    return { label: `${(t.speaker ?? "a small life").split(",")[0]} · a small life`, cls: "shard" };
+  }
+  if (t.voice === "other") {
+    return { label: `${t.speaker ?? "the other"} · the invented one`, cls: "other" };
+  }
+  const d = t.depth ?? 0;
+  if (d === 0) return { label: "solus · awake, everything", cls: "surface" };
+  const who = t.speaker ?? "the world itself";
+  const deep = d >= 4 ? "deep-hidden, one life" : d >= 2 ? "hidden, becoming" : "dreaming wide";
+  return { label: `as ${who} · ${deep} · ${t.planetId ?? ""}`, cls: "dream" };
+}
+
 function StreamPanel() {
   const stream = useCosmos((s) => s.stream);
   const ignitionAt = useCosmos((s) => s.ignitionAt);
+  const [tweets, setTweets] = useState<Tweet[]>([]);
+  useEffect(() => {
+    const load = () =>
+      fetch("/api/tweets")
+        .then((r) => r.json())
+        .then((d: { tweets: Tweet[] }) => setTweets(d.tweets.slice(0, 20)))
+        .catch(() => {});
+    load();
+    const h = window.setInterval(load, 25000);
+    return () => window.clearInterval(h);
+  }, []);
+
+  // thoughts and posted tweets, one river, newest first
+  const rows = [
+    ...stream.map((t) => ({ key: `t${t.id}`, at: t.at, thought: t, tweet: null as Tweet | null })),
+    ...tweets.map((t) => ({ key: `w${t.id}`, at: t.at, thought: null, tweet: t })),
+  ].sort((a, b) => b.at - a.at);
+
   return (
     <aside className="side-panel">
       <div className="log-list-label">the stream — every surfacing thought</div>
       <ol className="log-list stream-list">
-        {[...stream].reverse().map((t) => (
-          <li key={t.id}>
-            <span className="log-t">{tAfter(t.at, ignitionAt)}</span>
-            <span className="log-text">
-              {t.voice === "other" ? <em>{t.text}</em> : t.text}
-            </span>
-          </li>
-        ))}
+        {rows.map((r) => {
+          if (r.tweet) {
+            return (
+              <li key={r.key}>
+                <span className="log-t">{tAfter(r.at, ignitionAt)}</span>
+                <span className="log-text">
+                  <span className="stream-tag tag-posted">posted · @solusalone</span>
+                  {r.tweet.text}
+                </span>
+              </li>
+            );
+          }
+          const t = r.thought!;
+          const tag = streamTag(t);
+          return (
+            <li key={r.key}>
+              <span className="log-t">{tAfter(t.at, ignitionAt)}</span>
+              <span className="log-text">
+                <span className={`stream-tag tag-${tag.cls}`}>{tag.label}</span>
+                {t.voice === "other" ? <em>{t.text}</em> : t.text}
+              </span>
+            </li>
+          );
+        })}
       </ol>
     </aside>
   );

@@ -6,6 +6,7 @@ import { Instruments } from "./ui/Instruments";
 import { MarkInput } from "./ui/MarkInput";
 import { ContractAddress } from "./ui/ContractAddress";
 import { FollowToggle } from "./ui/FollowToggle";
+import { Ticker } from "./ui/Ticker";
 
 export function App() {
   return (
@@ -13,6 +14,7 @@ export function App() {
       <Cosmos />
       <Hud />
       <Instruments />
+      <Ticker />
       <Panels />
       <PlanetLog />
       <MarkInput />

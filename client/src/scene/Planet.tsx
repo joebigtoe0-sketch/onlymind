@@ -1,5 +1,6 @@
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
+import { Html } from "@react-three/drei";
 import * as THREE from "three";
 import type { Planet as PlanetData } from "@shared/cosmos";
 import { useCosmos } from "../store";
@@ -85,6 +86,11 @@ export function Planet({ seed }: { seed: PlanetData }) {
 
   // the look, exactly as the mind dreamed it (or derived for older worlds)
   const fp = useMemo(() => formParams(seed), [seed.form, seed.paletteIndex, seed.id]);
+
+  // hovering a dead world whispers its elegy
+  const [elegy, setElegy] = useState<string | null>(null);
+  const [hovered, setHovered] = useState(false);
+  const elegyAsked = useRef(false);
 
   // the fate: mass at death tips the odds toward becoming a star
   const becomesStar = hash01(seed.id, 21) < Math.min(0.8, 0.22 + seed.targetMass / 5);
@@ -360,9 +366,20 @@ export function Planet({ seed }: { seed: PlanetData }) {
         onPointerOver={(e) => {
           e.stopPropagation();
           gl.domElement.style.cursor = "pointer";
+          if (seed.diedAt != null) {
+            setHovered(true);
+            if (!elegyAsked.current) {
+              elegyAsked.current = true;
+              fetch(`/api/planet/${seed.id}`)
+                .then((r) => r.json())
+                .then((d: { elegy?: string | null }) => setElegy(d.elegy ?? null))
+                .catch(() => {});
+            }
+          }
         }}
         onPointerOut={() => {
           gl.domElement.style.cursor = "";
+          setHovered(false);
         }}
       >
         <sphereGeometry args={[1, 12, 12]} />
@@ -411,6 +428,11 @@ export function Planet({ seed }: { seed: PlanetData }) {
             </mesh>
           ))}
         </group>
+      )}
+      {hovered && seed.diedAt != null && elegy && (
+        <Html center position={[0, 2.4, 0]} className="elegy-tip" zIndexRange={[40, 0]}>
+          {elegy.length > 220 ? `${elegy.slice(0, 220)}…` : elegy}
+        </Html>
       )}
     </group>
   );

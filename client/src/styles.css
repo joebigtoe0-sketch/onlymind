@@ -449,6 +449,88 @@ canvas {
   margin-left: 7px;
 }
 
+/* the glyph ticker: unlabeled events crossing the bottom-left, oldest fading */
+.ticker {
+  position: fixed;
+  left: 34px;
+  bottom: 118px;
+  z-index: 40;
+  display: flex;
+  gap: 9px;
+  pointer-events: none;
+  user-select: none;
+  font-size: 11px;
+  color: #7e849e;
+}
+
+.tick {
+  opacity: 0;
+  animation: tick-in 0.6s ease forwards, tick-fade 90s linear forwards;
+}
+
+.tick-birth { color: #ffd9a0; }
+.tick-snap_back { color: #7d84f0; }
+.tick-doubt { color: #ff9a9a; }
+.tick-dweller { color: #c9b8e8; }
+.tick-vision { color: #9fd8ff; }
+.tick-mark { color: #8aff9f; }
+
+@keyframes tick-in {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 0.85; transform: translateY(0); }
+}
+
+@keyframes tick-fade {
+  from { opacity: 0.85; }
+  to { opacity: 0.12; }
+}
+
+/* stream provenance tags: who spoke, from how deep */
+.stream-tag {
+  display: block;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  margin-bottom: 2px;
+  opacity: 0.75;
+}
+
+.tag-surface { color: #9aa2c0; }
+.tag-dream { color: #b99fe8; }
+.tag-shard { color: #8fb8a8; }
+.tag-other { color: #d8a8c8; }
+.tag-posted { color: #7fb0d8; }
+
+/* a dead world's elegy, whispered on hover */
+.elegy-tip {
+  width: 280px;
+  padding: 10px 13px;
+  background: rgba(8, 9, 16, 0.82);
+  border: 1px solid rgba(125, 138, 168, 0.25);
+  border-radius: 3px;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-size: 11px;
+  line-height: 1.55;
+  color: #a8aec8;
+  font-style: italic;
+  pointer-events: none;
+}
+
+/* the unnamed instruments: a glyph that keeps changing, a line that fills */
+.meter.unnamed {
+  margin-top: 7px;
+  opacity: 0.85;
+}
+
+.season-glyph {
+  font-size: 13px;
+  text-align: right;
+}
+
+.awakening-fill {
+  background: linear-gradient(90deg, #4a5178, #fff6e8);
+  transition: width 8s ease;
+}
+
 .tweet-time {
   font-size: 10px;
   color: #6b7089;

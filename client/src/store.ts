@@ -32,6 +32,7 @@ type CosmosStore = {
   marks: Mark[];
   visions: Vision[]; // recent live ones (apparitions); history lives in logs
   dwellers: Fragment[]; // holder-shards living their small permanent lives
+  recentEvents: Array<{ kind: string; at: number; k: number }>; // ticker feed
   selectedPlanetId: string | null;
   followMind: boolean; // camera keeps the mind-light in focus
   setConnected: (v: boolean) => void;
@@ -69,6 +70,7 @@ export const useCosmos = create<CosmosStore>()((set) => ({
   marks: [],
   visions: [],
   dwellers: [],
+  recentEvents: [],
   selectedPlanetId: null,
   followMind: false,
   setConnected: (v) => set({ connected: v }),
@@ -91,8 +93,15 @@ export const useCosmos = create<CosmosStore>()((set) => ({
     }),
   applyEvents: (events) =>
     set((st) => {
-      let { ignitionAt, planets, thoughts, stream, focus, depth, activePlanetId, fragments, companion, marks, visions, dwellers, selectedPlanetId } = st;
+      let { ignitionAt, planets, thoughts, stream, focus, depth, activePlanetId, fragments, companion, marks, visions, dwellers, selectedPlanetId, recentEvents } = st;
       for (const ev of events) {
+        // everything feeds the glyph ticker (thoughts excluded — too chatty)
+        if (ev.kind !== "thought" && ev.kind !== "focus") {
+          recentEvents = [
+            ...recentEvents.slice(-23),
+            { kind: ev.kind, at: Date.now(), k: (recentEvents[recentEvents.length - 1]?.k ?? 0) + 1 },
+          ];
+        }
         if (ev.kind === "birth") {
           if (ignitionAt == null) ignitionAt = ev.planet.bornAt; // safety net
           if (!planets.some((p) => p.id === ev.planet.id)) planets = [...planets, ev.planet];
@@ -159,7 +168,7 @@ export const useCosmos = create<CosmosStore>()((set) => ({
           dyn.snapBackAt = ev.diedAt ?? cosmosNow(); // the core flares either way
         }
       }
-      return { ignitionAt, planets, thoughts, stream, focus, depth, activePlanetId, fragments, companion, marks, visions, dwellers, selectedPlanetId };
+      return { ignitionAt, planets, thoughts, stream, focus, depth, activePlanetId, fragments, companion, marks, visions, dwellers, selectedPlanetId, recentEvents };
     }),
   mergeBodies: (incoming) =>
     set((st) => {

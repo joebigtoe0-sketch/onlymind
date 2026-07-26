@@ -191,12 +191,15 @@ export function think(
   depth = 0,
   fragmentId: string | null = null,
   voice?: "self" | "other" | "shard",
+  speaker?: string | null,
 ) {
   const t: Thought = {
     id: `t${thoughtSerial++}`,
     text,
     at: Date.now(),
     planetId,
+    depth,
+    ...(speaker ? { speaker } : {}),
     ...(voice ? { voice } : {}),
   };
   sim.liveThoughts.push(t);

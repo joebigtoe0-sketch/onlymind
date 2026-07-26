@@ -400,14 +400,22 @@ void main() {
   vec3 np = normalize(vObjPos);
   float u = atan(np.z, np.x); // along the band
   float d = np.y; // across it
+  // periodic ring coordinates: noise sampled on the circle itself, so there
+  // is no seam where the angle wraps
+  vec2 ring = vec2(cos(u), sin(u));
+
+  // not a full halo — a STREAM: one bright river of it in one part of the
+  // sky, fading out on both ends
+  float du = atan(sin(u - 0.9), cos(u - 0.9)); // signed distance to center
+  float win = exp(-pow(du / 1.15, 2.0));
 
   // ragged-edged dust band hugging the plane
-  float edge = fbm(vec3(u * 2.0, d * 5.0, 3.7)) - 0.5;
-  float band = exp(-pow((abs(d) + edge * 0.24) * 4.4, 2.0));
+  float edge = fbm(vec3(ring * 1.8, d * 5.0)) - 0.5;
+  float band = exp(-pow((abs(d) + edge * 0.24) * 4.4, 2.0)) * win;
 
   // dust structure drifting slowly along the arm
-  float dust = fbm(vec3(u * 3.0 + uTime * 0.008, d * 9.0, 1.3));
-  float lanes = smoothstep(0.4, 0.75, fbm(vec3(u * 5.0 - uTime * 0.005, d * 14.0, 7.7)));
+  float dust = fbm(vec3(ring * 2.6 + uTime * 0.008, d * 9.0));
+  float lanes = smoothstep(0.4, 0.75, fbm(vec3(ring * 4.0 - uTime * 0.005, d * 14.0)));
 
   // brain-waves: slow ripples of brightness traveling the band
   float wave = 0.75 + 0.25 * sin(u * 5.0 - uTime * 0.16 + sin(d * 8.0 + uTime * 0.07) * 1.3);
@@ -418,7 +426,7 @@ void main() {
   vec3 col = mix(rim, core, dust) * band * wave;
   col *= 1.0 - lanes * 0.55 * band; // dark dust lanes cut through
 
-  gl_FragColor = vec4(col * uBirth * 0.22, 1.0);
+  gl_FragColor = vec4(col * uBirth * 0.3, 1.0);
 }
 `;
 

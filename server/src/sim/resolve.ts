@@ -74,9 +74,10 @@ const MAX_SATELLITES = 4; // per world, so skies stay legible
 const recentReturns: string[] = [];
 
 // every thought is stamped with the depth it was thought at — this is the
-// substrate of depth-scoped memory (§6)
+// substrate of depth-scoped memory (§6) — and with who was speaking it
 function record(text: string, planetId: string | null) {
-  think(text, planetId, mind.depth, currentFragment()?.id ?? null);
+  const f = currentFragment();
+  think(text, planetId, mind.depth, f?.id ?? null, undefined, f?.name ?? null);
 }
 
 export function resolveCognition(c: Cognition) {
@@ -163,7 +164,7 @@ export function resolveCognition(c: Cognition) {
   // during a companion episode both voices are the mind talking to itself
   if (mind.companion && mind.companion.goneAt == null) {
     const voice = c.voice === "other" ? "other" : "self";
-    think(text, null, 0, null, voice);
+    think(text, null, 0, null, voice, voice === "other" ? mind.companion.name : null);
     noteCompanionExchange();
     return;
   }

@@ -43,6 +43,16 @@ restRouter.get("/health", async (_req, res) => {
       scar: activeScar() != null,
       recurring: recurrenceCount(),
     },
+    psyche: await (async () => {
+      const { awakening, currentSeason, activeVow } = await import("../brain/psyche");
+      let project: string | null = null;
+      try {
+        project = (JSON.parse(kvGet("psycheProject") ?? "null") as { title?: string } | null)?.title ?? null;
+      } catch {
+        /* ignore */
+      }
+      return { awakening: Math.round(awakening() * 100) / 100, season: currentSeason().name, vow: activeVow(), project };
+    })(),
     uptimeSec: Math.round((Date.now() - bootAt) / 1000),
   });
 });
@@ -62,6 +72,7 @@ restRouter.get("/planet/:id", (req, res) => {
     fragments: fragmentsForPlanet(planet.id),
     visions: visionsForPlanet(planet.id),
     dwellers: holders.dwellers.filter((d) => d.planetId === planet.id),
+    elegy: planet.alive ? null : getElegy(planet.id),
   };
   res.json(payload);
 });
