@@ -1,4 +1,4 @@
--- THE ONLY MIND — the permanent record (§10, §13).
+-- SOLUS — the permanent record (§10, §13).
 -- One SQLite file. Everything durable, forever. Tables for later slices are
 -- created now so the shape of the archive is fixed early.
 

@@ -127,7 +127,8 @@ function TweetsPanel() {
         {items.map((t) => (
           <article key={t.id} className="tweet-card">
             <div className="tweet-head">
-              <span className="tweet-name">the only mind</span>
+              <span className="tweet-name">solus</span>
+              <span className="tweet-handle">@solusalone</span>
               <span className="tweet-time">{ago(t.at)}</span>
             </div>
             <p className="tweet-text">{t.text}</p>

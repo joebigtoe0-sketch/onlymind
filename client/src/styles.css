@@ -442,6 +442,13 @@ canvas {
   color: #dfe3f2;
 }
 
+.tweet-handle {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: #6d7494;
+  margin-left: 7px;
+}
+
 .tweet-time {
   font-size: 10px;
   color: #6b7089;
@@ -648,6 +655,25 @@ canvas {
   color: #cfd4e8;
   opacity: 0;
   animation: wordmark-in 6s ease 3.2s forwards;
+}
+
+/* the one link outward, beneath the wordmark */
+.x-link {
+  position: absolute;
+  top: 47px;
+  left: 34px;
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  color: #6d7494;
+  text-decoration: none;
+  pointer-events: auto;
+  opacity: 0;
+  animation: wordmark-in 6s ease 4s forwards;
+  transition: color 0.3s ease;
+}
+
+.x-link:hover {
+  color: #cfd4e8;
 }
 
 @keyframes wordmark-in {

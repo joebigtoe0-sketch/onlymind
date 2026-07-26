@@ -22,7 +22,7 @@ restRouter.get("/health", async (_req, res) => {
   res.json({
     chain: { ...(await chainStatus()), pulse: sim.pulse },
     ok: true,
-    name: "onlymind",
+    name: "solus",
     slice: 11,
     seed: sim.seed,
     tick: sim.tick,
