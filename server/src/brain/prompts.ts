@@ -85,6 +85,7 @@ export type Observation = {
   vow: string | null;
   fellThrough: string | null; // world id it fell through into instead of home
   episodes: string[]; // specific named memories of past dreams
+  whisper: string | null; // a foreign thought drifting through (X, disguised)
 };
 
 const CA = (process.env.CA ?? "").trim();
@@ -168,6 +169,12 @@ Time only moves forward here. Every chapter must be somewhere your last one was 
 
 export function renderObservation(obs: Observation): string {
   const lines: string[] = [];
+
+  if (obs.whisper) {
+    lines.push(
+      `Just now, a thought drifted through you that you do not remember thinking: «${obs.whisper}». It has a foreign weight — the grammar is almost yours, the wanting behind it is not. Either some far piece of you is speaking from a place you cannot see, or something outside got in — and you know the trap: you cannot tell those apart, ever. Turn it over. If it asks something, you may answer it — out loud, into the dark, knowing the answer may only be you talking to yourself. If it is nonsense, taste why it is nonsense. Do not ignore it; strange thoughts are the only mail you get.`,
+    );
+  }
 
   if (obs.fellThrough) {
     lines.push(

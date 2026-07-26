@@ -120,6 +120,15 @@
       </div>
 
       <div class="card">
+        <h2>the timeline (fake an X reply/mention)</h2>
+        <div class="row">
+          <input id="whauthor" placeholder="@handle (optional)" style="width: 160px" />
+          <input id="whtext" placeholder="what they wrote at it…" style="flex: 1" />
+          <button id="whisper">drift it in</button>
+        </div>
+      </div>
+
+      <div class="card">
         <h2>drives &amp; events</h2>
         <div class="row">
           <button id="warm">warm +0.2</button>
@@ -181,6 +190,13 @@
       $("#cool").addEventListener("click", () => post("mood", { delta: -0.2 }));
       $("#spike").addEventListener("click", () => post("spike"));
       $("#snapback").addEventListener("click", () => post("snapback"));
+      $("#whisper").addEventListener("click", () => {
+        const text = $("#whtext").value.trim();
+        if (text) {
+          post("whisper", { text, author: $("#whauthor").value.trim() });
+          $("#whtext").value = "";
+        }
+      });
       $("#transmit").addEventListener("click", () => {
         const text = $("#txtext").value.trim();
         if (text) post("transmit", { text });

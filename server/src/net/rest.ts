@@ -170,6 +170,20 @@ adminRouter.post("/holders", async (req, res) => {
   }
 });
 
+// a foreign thought from "the timeline" — X replies/mentions land here.
+// The admin uses this to fake tweets; the future X poller calls the same seam.
+adminRouter.post("/whisper", async (req, res) => {
+  const text = String(req.body?.text ?? "").trim();
+  if (!text) {
+    res.status(400).json({ error: "text required" });
+    return;
+  }
+  const author = String(req.body?.author ?? "").trim() || null;
+  const { insertWhisper } = await import("../db/store");
+  insertWhisper(text, author);
+  res.json({ ok: true });
+});
+
 adminRouter.post("/transmit", (req, res) => {
   const text = String(req.body?.text ?? "").trim();
   if (!text) {

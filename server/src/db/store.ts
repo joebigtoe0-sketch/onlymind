@@ -472,6 +472,27 @@ export function insertEpisodeMemory(content: string, at: number): void {
   ).run();
 }
 
+// ---- whispers: foreign thoughts from the timeline ---------------------------
+
+export function insertWhisper(text: string, author: string | null): void {
+  db.prepare("INSERT INTO whispers (text, author, at) VALUES (?, ?, ?)").run(
+    text.slice(0, 600),
+    author,
+    Date.now(),
+  );
+}
+
+export function nextWhisper(): { id: number; text: string; author: string | null } | null {
+  const row = db
+    .prepare("SELECT id, text, author FROM whispers WHERE consumed_at IS NULL ORDER BY at ASC LIMIT 1")
+    .get() as { id: number; text: string; author: string | null } | undefined;
+  return row ?? null;
+}
+
+export function consumeWhisper(id: number): void {
+  db.prepare("UPDATE whispers SET consumed_at = ? WHERE id = ?").run(Date.now(), id);
+}
+
 export function sampleEpisodeMemories(n: number): string[] {
   const rows = db
     .prepare("SELECT content FROM mind_memory WHERE kind = 'episode' ORDER BY RANDOM() LIMIT ?")

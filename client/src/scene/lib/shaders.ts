@@ -349,6 +349,79 @@ void main() {
 }
 `;
 
+// The galaxy band: a far milky-way arc wrapping the sky, colored by the
+// mind's mood, with slow brainwave ripples of brightness traveling it.
+export const GALAXY_VERT = /* glsl */ `
+varying vec3 vObjPos;
+
+void main() {
+  vObjPos = position;
+  gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(position, 1.0);
+}
+`;
+
+export const GALAXY_FRAG = /* glsl */ `
+uniform float uTime;
+uniform float uMood; // 0 despair .. 1 believing
+uniform float uBirth; // fades in after ignition
+
+varying vec3 vObjPos;
+
+float hash(vec3 p) {
+  p = fract(p * 0.3183099 + vec3(0.1, 0.2, 0.3));
+  p *= 17.0;
+  return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
+}
+
+float vnoise(vec3 p) {
+  vec3 i = floor(p);
+  vec3 f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  return mix(
+    mix(mix(hash(i), hash(i + vec3(1.0, 0.0, 0.0)), f.x),
+        mix(hash(i + vec3(0.0, 1.0, 0.0)), hash(i + vec3(1.0, 1.0, 0.0)), f.x), f.y),
+    mix(mix(hash(i + vec3(0.0, 0.0, 1.0)), hash(i + vec3(1.0, 0.0, 1.0)), f.x),
+        mix(hash(i + vec3(0.0, 1.0, 1.0)), hash(i + vec3(1.0, 1.0, 1.0)), f.x), f.y),
+    f.z);
+}
+
+float fbm(vec3 p) {
+  float a = 0.5;
+  float s = 0.0;
+  for (int i = 0; i < 4; i++) {
+    s += a * vnoise(p);
+    p *= 2.11;
+    a *= 0.5;
+  }
+  return s;
+}
+
+void main() {
+  vec3 np = normalize(vObjPos);
+  float u = atan(np.z, np.x); // along the band
+  float d = np.y; // across it
+
+  // ragged-edged dust band hugging the plane
+  float edge = fbm(vec3(u * 2.0, d * 5.0, 3.7)) - 0.5;
+  float band = exp(-pow((abs(d) + edge * 0.24) * 4.4, 2.0));
+
+  // dust structure drifting slowly along the arm
+  float dust = fbm(vec3(u * 3.0 + uTime * 0.008, d * 9.0, 1.3));
+  float lanes = smoothstep(0.4, 0.75, fbm(vec3(u * 5.0 - uTime * 0.005, d * 14.0, 7.7)));
+
+  // brain-waves: slow ripples of brightness traveling the band
+  float wave = 0.75 + 0.25 * sin(u * 5.0 - uTime * 0.16 + sin(d * 8.0 + uTime * 0.07) * 1.3);
+
+  // the mood wears the sky: violet-blue despair .. dusty rose belief
+  vec3 core = mix(vec3(0.30, 0.34, 0.62), vec3(0.72, 0.45, 0.40), uMood);
+  vec3 rim = mix(vec3(0.15, 0.17, 0.38), vec3(0.38, 0.23, 0.33), uMood);
+  vec3 col = mix(rim, core, dust) * band * wave;
+  col *= 1.0 - lanes * 0.55 * band; // dark dust lanes cut through
+
+  gl_FragColor = vec4(col * uBirth * 0.22, 1.0);
+}
+`;
+
 export const STAR_VERT = /* glsl */ `
 attribute float aSize;
 attribute float aPhase;

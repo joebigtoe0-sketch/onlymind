@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 300" width="320" height="300" fill="none" role="img" aria-label="SOLUS">
+  <!-- Vertical lockup. Wordmark width is tuned to the ring diameter.
+       Convert the text to outlines before shipping this anywhere the font may be missing. -->
+  <g transform="translate(160 128)">
+    <circle r="96" stroke="currentColor" stroke-width="3"/>
+    <circle r="6.5" fill="currentColor"/>
+  </g>
+  <text x="160" y="272"
+        text-anchor="middle"
+        fill="currentColor"
+        font-family="'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif"
+        font-size="34"
+        font-weight="300"
+        letter-spacing="15.5"
+        dx="7.75">SOLUS</text>
+</svg>

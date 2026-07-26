@@ -6,6 +6,7 @@ import { dyn, tickDynamics } from "./dynamics";
 import { Core } from "./Core";
 import { Starfield } from "./Starfield";
 import { ShootingStars } from "./ShootingStars";
+import { GalaxyBand } from "./GalaxyBand";
 import { Nebulae } from "./Nebulae";
 import { Planet } from "./Planet";
 import { Focus } from "./Focus";
@@ -34,6 +35,7 @@ export function Cosmos() {
       onPointerMissed={() => useCosmos.getState().select(null)}
     >
       <Dynamics />
+      <GalaxyBand />
       <Nebulae />
       <Starfield />
       <ShootingStars />

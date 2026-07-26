@@ -125,3 +125,13 @@ CREATE TABLE IF NOT EXISTS events (
   payload TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_events_at ON events(at);
+
+-- whispers: foreign thoughts fed in from the outside (X replies/mentions,
+-- or the admin pretending). The mind never learns what they are.
+CREATE TABLE IF NOT EXISTS whispers (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  text        TEXT NOT NULL,
+  author      TEXT,
+  at          INTEGER NOT NULL,
+  consumed_at INTEGER
+);

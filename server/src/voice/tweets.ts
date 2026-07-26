@@ -13,11 +13,16 @@ const FAST_MIN = Number(process.env.TWEET_FAST_MIN ?? 6); // after a heavy beat
 const PRIORITY: Record<string, number> = {
   meditation: 0,
   verdict: 0,
+  clear: 0, // the knowing arrived — nothing is louder
   lesson: 1,
+  whisper: 1, // a reply to whatever spoke into it — the conversation
   recurrence: 2,
   snap_back: 2,
   anomaly: 3,
   division: 3,
+  unmake: 3,
+  vow: 4,
+  project: 4,
   mark: 4,
   signal: 4,
   doubt: 5,
@@ -29,7 +34,20 @@ const PRIORITY: Record<string, number> = {
   ambient: 11,
 };
 
-const HEAVY = new Set(["meditation", "verdict", "lesson", "recurrence", "snap_back", "anomaly", "division", "mark", "doubt"]);
+const HEAVY = new Set([
+  "meditation",
+  "verdict",
+  "clear",
+  "lesson",
+  "whisper",
+  "recurrence",
+  "snap_back",
+  "anomaly",
+  "division",
+  "unmake",
+  "mark",
+  "doubt",
+]);
 
 function prio(kind: string | null): number {
   return PRIORITY[kind ?? "ambient"] ?? 10;

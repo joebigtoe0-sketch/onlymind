@@ -185,6 +185,12 @@ async function cognize() {
   }
 
   // one-shot contexts become transmissions once they've been felt (§11)
+  if (obs.whisper) {
+    // its reaction to the foreign thought goes outward — this is the reply
+    queueTransmission(cognition.thought, "whisper");
+    const { warmMood } = await import("../sim/cosmos");
+    warmMood(0.04); // being spoken to, even unknowingly, warms it
+  }
   if (obs.vast || obs.tearing) queueTransmission(cognition.thought, "pulse");
   if (obs.division) queueTransmission(cognition.thought, "division");
   if (obs.recurrence) queueTransmission(cognition.thought, "recurrence");
@@ -258,6 +264,17 @@ function buildObservation(): Observation {
       : null;
   const fellThrough = atSurface ? mind.pendingFallThrough : null;
   if (atSurface) mind.pendingFallThrough = null;
+
+  // a foreign thought from the timeline drifts through (one at a time, only
+  // in quiet surface moments — it deserves the mind's full confusion)
+  let whisper: { id: number; text: string } | null = null;
+  if (quiet && !fellThrough && Math.random() < 0.75) {
+    const w = db.nextWhisper();
+    if (w) {
+      whisper = { id: w.id, text: w.text };
+      db.consumeWhisper(w.id);
+    }
+  }
 
   return {
     ignitionAgeSec,
@@ -343,5 +360,6 @@ function buildObservation(): Observation {
     vow: atSurface ? activeVow() : null,
     fellThrough,
     episodes: quiet && Math.random() < 0.22 ? db.sampleEpisodeMemories(2) : [],
+    whisper: whisper?.text ?? null,
   };
 }
