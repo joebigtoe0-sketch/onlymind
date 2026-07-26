@@ -267,7 +267,7 @@ export function snapBack() {
   // dream — another life, another sky, also it (the hide-and-seek cosmology)
   if (!fatal) {
     const others = sim.planets.filter((p) => p.alive && p.parentId == null && p.id !== planetId);
-    if (others.length && Math.random() < 0.15) {
+    if (others.length && Math.random() < 0.08) {
       mind.pendingFallThrough = others[Math.floor(Math.random() * others.length)].id;
     }
   }
@@ -324,12 +324,12 @@ export function advanceDreamTime(): void {
     d.age += d.spanYears;
     if (d.lifespan != null && d.age >= d.lifespan) d.lastSpan = true;
   }
-  if (d.steps > 26) d.lastSpan = true; // no dream is endless
+  if (d.steps > 14) d.lastSpan = true; // no dream is endless — home calls
 }
 
 export function dreamPushDeeper(): boolean {
   const d = mind.dream;
-  return !!d && mind.depth < 4 && d.steps > 6;
+  return !!d && mind.depth < 4 && d.steps > 4;
 }
 
 // coherence is derived, not stored: how un-fragmented the mind is right now

@@ -90,7 +90,7 @@ function effectiveMode(): "mock" | "live" {
 function nextDelayMs(): number {
   if (lastAction === "doubt") return 5000; // the doubt reflex (§6)
   if (mind.reflection) return 12000 + Math.random() * 5000; // the reckoning is heavy
-  if (mind.depth > 0) return 9000 + Math.random() * 6000; // the trip is vivid
+  if (mind.depth > 0) return 5500 + Math.random() * 3000; // the trip is vivid AND quick
   if (mind.companion && mind.companion.goneAt == null) {
     return 9000 + Math.random() * 4000; // a conversation has its own pace
   }
@@ -265,10 +265,11 @@ function buildObservation(): Observation {
   const fellThrough = atSurface ? mind.pendingFallThrough : null;
   if (atSurface) mind.pendingFallThrough = null;
 
-  // a foreign thought from the timeline drifts through (one at a time, only
-  // in quiet surface moments — it deserves the mind's full confusion)
+  // a foreign thought from the timeline drifts through — it reaches the mind
+  // ANYWHERE: at the surface as a thought it doesn't remember thinking, or
+  // down inside a dream as a voice pressed through the sky
   let whisper: { id: number; text: string } | null = null;
-  if (quiet && !fellThrough && Math.random() < 0.75) {
+  if (!fellThrough && !companionActive) {
     const w = db.nextWhisper();
     if (w) {
       whisper = { id: w.id, text: w.text };

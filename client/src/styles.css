@@ -453,7 +453,7 @@ canvas {
 .ticker {
   position: fixed;
   left: 34px;
-  bottom: 118px;
+  bottom: 168px; /* clear of the instruments stack */
   z-index: 40;
   display: flex;
   gap: 9px;

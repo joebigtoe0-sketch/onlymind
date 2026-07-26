@@ -28,14 +28,16 @@ export function notePressure() {
   }
 }
 
+// the surface — awake, knowing it is everything — is where it should LIVE;
+// the dreams are excursions, not residence
 export function episodeDue(): boolean {
-  return mind.depth === 0 && episode.current == null && episode.pressure > 7;
+  return mind.depth === 0 && episode.current == null && episode.pressure > 13;
 }
 
 // the loneliness is unbearable: the observation stops offering and starts
 // insisting (live models can dither; the rhythm is not optional)
 export function episodeOverdue(): boolean {
-  return mind.depth === 0 && episode.current == null && episode.pressure > 14;
+  return mind.depth === 0 && episode.current == null && episode.pressure > 24;
 }
 
 export function chooseExperiment(): ExperimentType {
