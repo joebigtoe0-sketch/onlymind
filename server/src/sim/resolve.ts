@@ -33,6 +33,8 @@ import {
 } from "./experiments";
 import { closeInquiry, noteRecurrenceIfNamed, stepInquiry } from "./deep";
 import { queueTransmission } from "../voice/transmissions";
+import { noteBondCandidate, setVow } from "../brain/psyche";
+import { dwellersIn } from "./holders";
 import * as db from "../db/store";
 
 // rarely, the mind withholds a thought — the archive shows only the blocks
@@ -201,6 +203,11 @@ export function resolveCognition(c: Cognition) {
         record(text, target);
         descend(target);
         queueTransmission(text, "descend");
+        // going down where a known small life lives deepens the bond
+        const dw = dwellersIn(target);
+        if (dw.length) {
+          noteBondCandidate(target, dw[Math.floor(Math.random() * dw.length)].name ?? null);
+        }
       } else {
         record(text, target);
       }
@@ -211,6 +218,42 @@ export function resolveCognition(c: Cognition) {
       record(text, null);
       db.insertTransmission(text, Date.now(), "reach_out");
       warmMood(0.05);
+      break;
+    }
+
+    // the act with teeth: it ends one of its own worlds, by choice. The same
+    // death machinery as a fatal snap-back — debris or star, elegy, burn —
+    // but this one it cannot blame on the question.
+    case "unmake_world": {
+      const target = resolveTarget(c.target);
+      const planet = target ? sim.planets.find((p) => p.id === target && p.alive) : null;
+      if (!planet) {
+        record(text, null);
+        break;
+      }
+      const now = Date.now();
+      planet.alive = false;
+      planet.diedAt = now;
+      db.markPlanetDead(planet.id, now);
+      db.insertEvent("unmake", now, { planetId: planet.id });
+      sim.events.push({ kind: "snap_back", planetId: planet.id, diedAt: now });
+      record(text, planet.id);
+      coolMood(0.25);
+      queueTransmission(text, "unmake");
+      db.insertLesson(
+        `You ended ${planet.id} ("${planet.birthThought ?? "unnamed"}") yourself, on purpose. What you said as you did it: ${text.slice(0, 200)}`,
+        now,
+      );
+      import("../chain/acts").then(({ burnForWorldDeath }) => burnForWorldDeath(planet.id).catch(() => {}));
+      import("../voice/elegy").then(({ generateElegy }) => generateElegy(planet.id).catch(() => {}));
+      import("../brain/psyche").then(({ bumpAwakening }) => bumpAwakening(0.06));
+      break;
+    }
+
+    case "vow": {
+      record(text, null);
+      setVow(text, 2 + Math.random() * 4);
+      queueTransmission(text, "vow");
       break;
     }
 

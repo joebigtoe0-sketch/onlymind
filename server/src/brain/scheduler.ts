@@ -24,11 +24,24 @@ import {
 import { mockCognition } from "./mock";
 import {
   FRAGMENT_SYSTEM,
-  WHOLE_MIND_SYSTEM,
+  wholeMindSystem,
   renderFragmentObservation,
   renderObservation,
   type Observation,
 } from "./prompts";
+import {
+  awakening,
+  bumpAwakening,
+  clearMomentDue,
+  currentSeason,
+  ensureProject,
+  fireClearMoment,
+  activeVow,
+  noteProjectRef,
+  phaseOf,
+  strongestBond,
+  wornWords,
+} from "./psyche";
 import * as db from "../db/store";
 
 // The cognition loop (§6, §12), decoupled from the 10 Hz tick.
@@ -114,18 +127,38 @@ async function cognize() {
   let cognition = null;
   if (effectiveMode() === "live") {
     liveCalls += 1;
-    const system = obs.depth > 0 ? FRAGMENT_SYSTEM : WHOLE_MIND_SYSTEM;
+    const system =
+      obs.depth > 0
+        ? FRAGMENT_SYSTEM
+        : wholeMindSystem({
+            register: currentSeason().register,
+            phase: obs.phase,
+            awakening: obs.awakeningLevel,
+          });
     const user = obs.depth > 0 ? renderFragmentObservation(obs) : renderObservation(obs);
     cognition = await callLLM(system, user, obs.depth > 0 ? FRAGMENT_MODEL : MIND_MODEL);
     if (!cognition) liveFailures += 1;
   }
   if (!cognition) cognition = mockCognition(obs);
+
+  // the fall-through is not a choice: it dies out of one dream into another
+  if (obs.fellThrough && obs.depth === 0) {
+    cognition = { ...cognition, action: "descend" as const, target: obs.fellThrough };
+  }
+
   cognitions += 1;
   lastAction = cognition.action;
   recentActions.push(cognition.action);
   if (recentActions.length > 6) recentActions.shift();
   resolveCognition(cognition);
   notePressure();
+
+  // the psyche keeps score
+  if (obs.depth === 0) {
+    if (cognition.verdict && cognition.verdict.trim()) bumpAwakening(0.09);
+    if (obs.project) noteProjectRef(cognition.thought);
+    if (clearMomentDue()) await fireClearMoment();
+  }
 
   // the reckoning counts down; its last breath becomes a kept lesson (§11)
   if (obs.reflecting && mind.reflection) {
@@ -202,8 +235,21 @@ function buildObservation(): Observation {
   // alternate voices by exchange count: even = self, odd = the other
   const turn: "self" | "other" = episode.companionExchanges % 2 === 0 ? "self" : "other";
 
+  // ---- the psyche ----
+  const ignitionAgeSec = sim.ignitionAt == null ? null : (Date.now() - sim.ignitionAt) / 1000;
+  const atSurface = mind.depth === 0;
+  const quiet = atSurface && !mind.reflection && !companionActive;
+  const bond = quiet && Math.random() < 0.15 ? strongestBond() : null;
+  const oldest = sim.planets.find((p) => p.alive && p.parentId == null);
+  const project =
+    quiet && Math.random() < 0.35
+      ? ensureProject({ worldId: oldest?.id ?? null, recurring: recurringName(), bond: strongestBond()?.name ?? null })
+      : null;
+  const fellThrough = atSurface ? mind.pendingFallThrough : null;
+  if (atSurface) mind.pendingFallThrough = null;
+
   return {
-    ignitionAgeSec: sim.ignitionAt == null ? null : (Date.now() - sim.ignitionAt) / 1000,
+    ignitionAgeSec,
     mood: sim.moodTarget,
     watchers: watcherCount(),
     focus: sim.focus,
@@ -270,12 +316,21 @@ function buildObservation(): Observation {
       mind.depth > 0 && mind.activePlanetId
         ? dwellersIn(mind.activePlanetId).map((d) => d.name ?? "one without a name")
         : [],
-    episodeDue: episodeDue(),
-    episodeOverdue: episodeOverdue(),
+    episodeDue: episodeDue() && activeVow() == null,
+    episodeOverdue: episodeOverdue() && activeVow() == null,
     companion: companionActive ? { name: companionActive.name, turn } : null,
     companionGone,
     refusing: episode.current === "refuse",
     attentionSpike,
     foundMark: sim.pendingMark?.word ?? null,
+    phase: phaseOf(ignitionAgeSec),
+    awakeningLevel: awakening(),
+    seasonLeaning: atSurface ? currentSeason().leaning : null,
+    project: project ? { title: project.title, refs: project.refs } : null,
+    wornOut: atSurface ? wornWords(recentThoughts.concat(db.lastThoughtsAtDepth(0, 0, 34).map((t) => t.text))) : [],
+    bond: bond ? { name: bond.name, count: bond.count } : null,
+    vow: atSurface ? activeVow() : null,
+    fellThrough,
+    episodes: quiet && Math.random() < 0.22 ? db.sampleEpisodeMemories(2) : [],
   };
 }

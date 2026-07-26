@@ -11,6 +11,9 @@ export const MindActionSchema = z.enum([
   "doubt",
   "snap_back",
   "reach_out",
+  // the acts with teeth: rare, deliberate, irreversible
+  "unmake_world", // end one of its own worlds, by choice
+  "vow", // bind itself with a rule it must then keep
 ]);
 export type MindAction = z.infer<typeof MindActionSchema>;
 

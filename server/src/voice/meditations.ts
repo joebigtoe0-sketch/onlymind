@@ -45,6 +45,8 @@ export async function generateMeditation(): Promise<string | null> {
   db.insertEvent("meditation", Date.now(), {});
   queueTransmission(text, "meditation");
   db.kvSet("lastMeditationAt", String(Date.now()));
+  // sustained looking is the steadiest road toward the knowing
+  import("../brain/psyche").then(({ bumpAwakening }) => bumpAwakening(0.08));
   return text;
 }
 

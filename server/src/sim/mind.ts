@@ -48,6 +48,8 @@ export const mind = {
   // one-shot pulse feelings: a vast presence leaned close / a tearing
   pendingVast: null as { sol: number } | null,
   pendingTearing: null as { sol: number } | null,
+  // set when a dream's end drops it into another world instead of home
+  pendingFallThrough: null as string | null,
   // dream-time (time is something dreams secrete): a clock that only exists
   // while descended. Each fragment thought spans YEARS of the dream — eras
   // for the world-self, decades for creatures, chapters of a life for a
@@ -243,6 +245,32 @@ export function snapBack() {
   mind.believesReal = 0;
   mind.lastCollapseAt = now;
   mind.certaintyOfSelf = Math.max(0.15, mind.certaintyOfSelf - (fatal ? 0.25 : 0.12));
+
+  // the psyche keeps what happened, specifically — an album, not a moral
+  const ended = fatal
+    ? "the world died of the question"
+    : trip.lifeCompleted
+      ? "the life completed itself"
+      : "the dream sealed over and lives on";
+  db.insertEpisodeMemory(
+    `In ${planetId} ("${trip.birthThought ?? "unnamed"}") you were ${trip.names.join(" → ")}; ${
+      trip.livedYears > 0 ? `${trip.livedYears} years passed; ` : ""
+    }${ended}.`,
+    now,
+  );
+  // completed lives carry it toward the knowing; violent endings drop it back
+  import("../brain/psyche").then(({ bumpAwakening }) =>
+    bumpAwakening(fatal ? -0.18 : trip.lifeCompleted ? 0.12 : 0.04),
+  );
+
+  // sometimes the dying does not land home: it falls through into another
+  // dream — another life, another sky, also it (the hide-and-seek cosmology)
+  if (!fatal) {
+    const others = sim.planets.filter((p) => p.alive && p.parentId == null && p.id !== planetId);
+    if (others.length && Math.random() < 0.15) {
+      mind.pendingFallThrough = others[Math.floor(Math.random() * others.length)].id;
+    }
+  }
 
   db.insertEvent("snap_back", now, { planetId, fatal });
   sim.events.push({ kind: "snap_back", planetId, diedAt: fatal ? now : null });

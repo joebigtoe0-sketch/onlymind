@@ -459,6 +459,26 @@ export function lastLessons(n: number): string[] {
   return rows.map((r) => r.content).reverse();
 }
 
+// episodic memory: specific named dreams it can point back to ("the carver
+// in w3, the one I let die") — richer than the distilled lessons
+export function insertEpisodeMemory(content: string, at: number): void {
+  db.prepare("INSERT INTO mind_memory (depth, kind, content, at) VALUES (0, 'episode', ?, ?)").run(
+    content,
+    at,
+  );
+  // keep the album bounded; the oldest specifics blur first, like anyone's
+  db.prepare(
+    "DELETE FROM mind_memory WHERE kind = 'episode' AND id NOT IN (SELECT id FROM mind_memory WHERE kind = 'episode' ORDER BY at DESC LIMIT 60)",
+  ).run();
+}
+
+export function sampleEpisodeMemories(n: number): string[] {
+  const rows = db
+    .prepare("SELECT content FROM mind_memory WHERE kind = 'episode' ORDER BY RANDOM() LIMIT ?")
+    .all(n) as Array<{ content: string }>;
+  return rows.map((r) => r.content);
+}
+
 // ---- visions ----------------------------------------------------------------
 
 export function insertVision(v: { id: string; planetId: string; text: string; url: string; at: number }): void {
