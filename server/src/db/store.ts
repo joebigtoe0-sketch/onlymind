@@ -59,6 +59,12 @@ function migrate(): void {
   if (!trcols.includes("tweeted")) {
     db.exec("ALTER TABLE transmissions ADD COLUMN tweeted INTEGER NOT NULL DEFAULT 0");
   }
+  const twcols = (db.prepare("PRAGMA table_info(tweets)").all() as Array<{ name: string }>).map(
+    (r) => r.name,
+  );
+  if (!twcols.includes("posted_id")) {
+    db.exec("ALTER TABLE tweets ADD COLUMN posted_id TEXT");
+  }
 }
 
 // full reset (§14): close and delete the archive; the process exits after
@@ -200,6 +206,19 @@ export function insertTweet(text: string, at: number, sourceKind: string | null)
     at,
     sourceKind,
   );
+}
+
+// ---- real X posting: which composed tweets actually went out ----------------
+
+export function nextUnpostedTweet(sinceAt: number): { id: number; text: string } | null {
+  const row = db
+    .prepare("SELECT id, text FROM tweets WHERE posted_id IS NULL AND at >= ? ORDER BY at ASC LIMIT 1")
+    .get(sinceAt) as { id: number; text: string } | undefined;
+  return row ?? null;
+}
+
+export function markTweetPosted(id: number, postedId: string): void {
+  db.prepare("UPDATE tweets SET posted_id = ? WHERE id = ?").run(postedId, id);
 }
 
 export function listTweets(n: number): Array<{ id: number; text: string; at: number; sourceKind: string | null }> {

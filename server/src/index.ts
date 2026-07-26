@@ -21,6 +21,7 @@ const { startAnomalyClock } = await import("./sim/deep");
 const { startMeditations } = await import("./voice/meditations");
 const { startChainFeed } = await import("./chain/feed");
 const { startFeeClaims } = await import("./chain/acts");
+const { startXReader, startXPoster } = await import("./social/x");
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -85,4 +86,6 @@ server.listen(port, () => {
   startMeditations();
   startChainFeed();
   startFeeClaims();
+  startXReader();
+  startXPoster();
 });
