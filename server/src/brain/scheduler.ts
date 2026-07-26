@@ -39,6 +39,7 @@ import {
   activeVow,
   noteProjectRef,
   phaseOf,
+  setSeason,
   strongestBond,
   wornWords,
 } from "./psyche";
@@ -157,6 +158,16 @@ async function cognize() {
   if (obs.depth === 0) {
     if (cognition.verdict && cognition.verdict.trim()) bumpAwakening(0.09);
     if (obs.project) noteProjectRef(cognition.thought);
+    // the chain reaches the psyche too: a tearing is violence — it knocks
+    // the mind away from the knowing and can turn the weather of self;
+    // something vast leaning close can tip it toward warmth or appetite
+    if (obs.tearing) {
+      bumpAwakening(-0.08);
+      if (Math.random() < 0.4) setSeason(Math.random() < 0.5 ? "grieving" : "bitter");
+    }
+    if (obs.vast && Math.random() < 0.25) {
+      setSeason(Math.random() < 0.5 ? "tender" : "hunger");
+    }
     if (clearMomentDue()) await fireClearMoment();
   }
 
