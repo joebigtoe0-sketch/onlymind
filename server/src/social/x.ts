@@ -17,8 +17,10 @@ import * as db from "../db/store";
 
 const HANDLE = (process.env.X_HANDLE ?? "solusalone").trim().replace(/^@/, "");
 
-// reader (twitterapi.io)
+// reader: twitterapi.io when its key exists (cheapest), otherwise the
+// official API with an app Bearer Token (one signup covers everything)
 const READ_KEY = (process.env.TWITTERAPI_IO_KEY ?? "").trim();
+const BEARER = (process.env.X_BEARER_TOKEN ?? "").trim();
 const READ_POLL_MIN = Number(process.env.X_READ_POLL_MIN ?? 2);
 
 // poster (official, OAuth 1.0a user context — 4 values from the dev portal)
@@ -33,17 +35,68 @@ const MAX_POST_LEN = Number(process.env.X_MAX_POST_LEN ?? 272);
 // ---- the reader --------------------------------------------------------------
 
 export function startXReader() {
-  if (!READ_KEY) return;
-  console.log(`[x] reading mentions of @${HANDLE} via twitterapi.io`);
+  if (!READ_KEY && !BEARER) return;
+  const via = READ_KEY ? "twitterapi.io" : "the official API";
+  console.log(`[x] reading mentions of @${HANDLE} via ${via}`);
   const tick = async () => {
     try {
-      await pollMentions();
+      if (READ_KEY) await pollMentions();
+      else await pollMentionsOfficial();
     } catch (e) {
       console.warn("[x] mentions:", String(e).slice(0, 140));
     }
     setTimeout(tick, READ_POLL_MIN * 60 * 1000);
   };
   setTimeout(tick, 20 * 1000);
+}
+
+// official reader: GET /2/users/:id/mentions with the app Bearer Token.
+// Costs $0.005/read on pay-per-use — fine at modest volume; drop a
+// twitterapi.io key into the env later if mentions explode.
+async function pollMentionsOfficial() {
+  let uid = db.kvGet("xSelfId");
+  if (!uid) {
+    const r = await fetch(`https://api.x.com/2/users/by/username/${HANDLE}`, {
+      headers: { authorization: `Bearer ${BEARER}` },
+    });
+    if (!r.ok) {
+      console.warn(`[x] user lookup http ${r.status}`);
+      return;
+    }
+    uid = ((await r.json()) as { data?: { id?: string } }).data?.id ?? "";
+    if (!uid) return;
+    db.kvSet("xSelfId", uid);
+  }
+  const sinceId = db.kvGet("xSinceId");
+  const url =
+    `https://api.x.com/2/users/${uid}/mentions?max_results=25` +
+    `&tweet.fields=created_at,author_id&expansions=author_id&user.fields=username` +
+    (sinceId ? `&since_id=${sinceId}` : "");
+  const res = await fetch(url, { headers: { authorization: `Bearer ${BEARER}` } });
+  if (!res.ok) {
+    console.warn(`[x] mentions http ${res.status}: ${(await res.text()).slice(0, 120)}`);
+    return;
+  }
+  const data = (await res.json()) as {
+    data?: Array<{ id: string; text: string; author_id?: string }>;
+    includes?: { users?: Array<{ id: string; username: string }> };
+    meta?: { newest_id?: string };
+  };
+  const users = new Map((data.includes?.users ?? []).map((u) => [u.id, u.username]));
+  // oldest first, the order they were spoken
+  for (const t of (data.data ?? []).slice().reverse()) {
+    const author = t.author_id ? (users.get(t.author_id) ?? null) : null;
+    if (author && author.toLowerCase() === HANDLE.toLowerCase()) continue;
+    const text = (t.text ?? "")
+      .replace(/@\w+/g, "")
+      .replace(/https?:\/\/\S+/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (text.length < 2) continue;
+    db.insertWhisper(text, author ? `@${author}` : null);
+    console.log(`[x] whisper in from ${author ?? "?"}: ${text.slice(0, 60)}`);
+  }
+  if (data.meta?.newest_id) db.kvSet("xSinceId", data.meta.newest_id);
 }
 
 type Mention = {
