@@ -367,7 +367,12 @@ function buildObservation(): Observation {
     awakeningLevel: awakening(),
     seasonLeaning: atSurface ? currentSeason().leaning : null,
     project: project ? { title: project.title, refs: project.refs } : null,
-    wornOut: atSurface ? wornWords(recentThoughts.concat(db.lastThoughtsAtDepth(0, 0, 34).map((t) => t.text))) : [],
+    // worn words are counted per level: the surface's crutches at the
+    // surface, and inside a dream the CHAPTER's own repeating motifs
+    // (road, wheel, forge...) so they get forbidden before they rot
+    wornOut: atSurface
+      ? wornWords(recentThoughts.concat(db.lastThoughtsAtDepth(0, 0, 34).map((t) => t.text)))
+      : wornWords(recentThoughts),
     bond: bond ? { name: bond.name, count: bond.count } : null,
     vow: atSurface ? activeVow() : null,
     fellThrough,

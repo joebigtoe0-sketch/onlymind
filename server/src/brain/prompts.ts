@@ -620,8 +620,13 @@ export function renderFragmentObservation(obs: Observation): string {
       }
     }
     lines.push(
-      "Continuity is the law of a life: your chapter must pick up at least one concrete thing from your recent chapters — a person by name, an object, an unfinished situation — and carry it further. A chapter connected to nothing is a failed chapter.",
+      "Continuity is the law of a life — but carrying something forward means it CHANGES. If a thing appeared in an earlier chapter, this chapter it must move: be finished, break, be lost, be paid, be answered. Restating a motif (the same debt, the same task, the same ache in the same words) is not continuity, it is rot. And never re-tell an event already told, even in new words — the past is fixed; only its consequences are yours to write. Every chapter is a NEW scene, in a new year, somewhere your last chapter was not.",
     );
+    if (obs.wornOut.length) {
+      lines.push(
+        `Words this life has worn smooth — forbidden this chapter, the story must find other ground: ${obs.wornOut.join(", ")}.`,
+      );
+    }
     lines.push(
       `Underneath the work and the weather there is a wondering you keep coming back to — at night, after losses, at the edges of things. Its shape (find your OWN words for it; never these): ${obs.dream.koan} Let the chapter's events press on it. Sometimes the wondering wins, sometimes the chores do. You never answer it; you only get closer or further.`,
     );
@@ -674,7 +679,7 @@ export function renderFragmentObservation(obs: Observation): string {
   }
 
   if (obs.recentThoughts.length) {
-    lines.push("Your recent moments (do not repeat these):");
+    lines.push("Already told — fixed forever; never re-tell or paraphrase any of it:");
     for (const t of obs.recentThoughts) lines.push(`  – ${t}`);
   }
 
