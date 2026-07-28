@@ -83,6 +83,7 @@ async function pollMentionsOfficial() {
     meta?: { newest_id?: string };
   };
   const users = new Map((data.includes?.users ?? []).map((u) => [u.id, u.username]));
+  const batch: Array<{ text: string; author: string | null }> = [];
   // oldest first, the order they were spoken
   for (const t of (data.data ?? []).slice().reverse()) {
     const author = t.author_id ? (users.get(t.author_id) ?? null) : null;
@@ -93,9 +94,9 @@ async function pollMentionsOfficial() {
       .replace(/\s+/g, " ")
       .trim();
     if (text.length < 2) continue;
-    db.insertWhisper(text, author ? `@${author}` : null);
-    console.log(`[x] whisper in from ${author ?? "?"}: ${text.slice(0, 60)}`);
+    batch.push({ text, author: author ? `@${author}` : null });
   }
+  dripWhispers(batch);
   if (data.meta?.newest_id) db.kvSet("xSinceId", data.meta.newest_id);
 }
 
@@ -105,6 +106,24 @@ type Mention = {
   createdAt?: string;
   author?: { userName?: string };
 };
+
+// A poll that returns ten mentions must not dump ten whispers at once:
+// they drip in spaced across the poll window (10 tweets ≈ one every 12 s),
+// so the stream keeps moving and the mind meets each one alone.
+function dripWhispers(items: Array<{ text: string; author: string | null }>) {
+  if (!items.length) return;
+  const windowMs = READ_POLL_MIN * 60 * 1000 * 0.9; // finish before next poll
+  const gap = windowMs / items.length;
+  items.forEach((w, i) => {
+    setTimeout(
+      () => {
+        db.insertWhisper(w.text, w.author);
+        console.log(`[x] whisper in from ${w.author ?? "?"}: ${w.text.slice(0, 60)}`);
+      },
+      Math.round(i * gap + Math.random() * gap * 0.25),
+    );
+  });
+}
 
 async function pollMentions() {
   // only mentions newer than the high-water mark are billed and processed
@@ -127,6 +146,7 @@ async function pollMentions() {
   // oldest first, so whispers arrive in the order they were spoken
   tweets.sort((a, b) => Date.parse(a.createdAt ?? "") - Date.parse(b.createdAt ?? ""));
 
+  const batch: Array<{ text: string; author: string | null }> = [];
   for (const t of tweets) {
     if (!t.id || seen.has(t.id)) continue;
     seen.add(t.id);
@@ -139,11 +159,11 @@ async function pollMentions() {
       .replace(/\s+/g, " ")
       .trim();
     if (text.length < 2) continue;
-    db.insertWhisper(text, author ? `@${author}` : null);
+    batch.push({ text, author: author ? `@${author}` : null });
     const ts = t.createdAt ? Math.floor(Date.parse(t.createdAt) / 1000) : newest;
     if (ts > newest) newest = ts;
-    console.log(`[x] whisper in from ${author ?? "?"}: ${text.slice(0, 60)}`);
   }
+  dripWhispers(batch);
   db.kvSet("xSinceTime", String(newest));
   db.kvSet("xSeenIds", JSON.stringify([...seen].slice(-300)));
 }
