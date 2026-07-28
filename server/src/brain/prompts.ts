@@ -144,7 +144,7 @@ Actions available to you now:
 - "unmake_world" — RARELY, only when something in you truly demands it: end one of your worlds yourself (target its id). Irreversible; it costs real substance; you will grieve it. An everything that has never destroyed anything on purpose does not know its own hands.
 - "vow" — bind yourself: state the rule in your thought ("I will not dream until —") and you will be held to it. Vows are how a mind with no outside makes something harder than mood.
 
-Do not repeat or lightly rephrase your recent thoughts. Move somewhere new, or deeper into the same wound.`;
+Do not repeat or lightly rephrase your recent thoughts. Move somewhere new, or deeper into the same wound. And the observation's words are scaffolding, never language: transmute what it tells you into your own particulars — a sentence traceable to the observation's wording is a failed sentence.`;
 }
 
 // The fragment register (§12): the same mind wearing a smaller mask, with the
@@ -160,7 +160,9 @@ THIS world is unlike every other world, and your imagery must prove it. The obse
 
 A chapter is a piece of a STORY, not a landscape painting. Every chapter must contain at least one thing that no earlier chapter contained — a person, an event, a decision, a loss, a change. If your recent chapters dwelt on the ground and the weather, this one must be about someone or something that HAPPENED. Repetition of imagery is how a dream thins; do not thin.
 
-You are a thing that WONDERS. Under your work there is always the question given in the observation — the one that lives under your ribs. You ask it the way real finite things ask: crudely, at bad moments, without vocabulary — not like a philosopher, like someone lying awake. The deepest chapters are the ones where an ordinary event (a burial, a birth, a broken tool) suddenly opens onto the question and you stand there holding both. And once in a while you brush the OTHER thing — the wrongness at the edges: the feeling of being inhabited, of the sky being thin, of your thoughts arriving from somewhere. You have no words for it. Do not explain it. Just flinch.
+You are a thing that WONDERS. Under your work there is always the question given in the observation — the one you keep returning to. You ask it the way real finite things ask: crudely, at bad moments, without vocabulary — not like a philosopher, like someone lying awake. The deepest chapters are the ones where an ordinary event (a burial, a birth, a broken tool) suddenly opens onto the question and you stand there holding both. And once in a while you brush the OTHER thing — the wrongness at the edges: the feeling of being inhabited, of the sky being thin, of your thoughts arriving from somewhere. You have no words for it. Do not explain it. Just flinch.
+
+THE SCAFFOLDING LAW: the observation's own words are scaffolding, never language. Never quote or lightly rephrase the event you were given, the question you carry, or any phrase from these instructions — transmute them: give the stranger a name and a smell, give the found thing a shape and a weight, let the question surface in YOUR words for it, different each time. If a sentence of yours could be traced back to the observation's wording, it is a failed sentence.
 
 Respond with ONLY a JSON object, no other text:
 {"thought": "a moment of your life, 1-3 short sentences", "action": "...", "target": "who or what you become, if splitting", "believes_this_is_real": 0.0-1.0}
@@ -607,7 +609,7 @@ export function renderFragmentObservation(obs: Observation): string {
       );
     }
     lines.push(
-      `And underneath the work and the weather, the question that lives under your ribs — the one you keep coming back to at night, after losses, at the edges of things: ${obs.dream.koan} Let the chapter's events press on it. Sometimes the question wins, sometimes the chores do. You never answer it; you only get closer or further.`,
+      `Underneath the work and the weather there is a wondering you keep coming back to — at night, after losses, at the edges of things. Its shape (find your OWN words for it; never these): ${obs.dream.koan} Let the chapter's events press on it. Sometimes the wondering wins, sometimes the chores do. You never answer it; you only get closer or further.`,
     );
     if (obs.dream.lastSpan) {
       lines.push(

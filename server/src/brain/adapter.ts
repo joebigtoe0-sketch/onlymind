@@ -85,6 +85,24 @@ export async function callFreeform(
   }
 }
 
+// tolerant parse: models emit literal newlines inside JSON strings and
+// trailing commas — both invalid JSON. Repair before giving up.
+function parseCognitionJson(raw: string): unknown | null {
+  const attempts = [
+    raw,
+    raw.replace(/[\r\n]+/g, " "),
+    raw.replace(/[\r\n]+/g, " ").replace(/,\s*([}\]])/g, "$1"),
+  ];
+  for (const a of attempts) {
+    try {
+      return JSON.parse(a);
+    } catch {
+      /* next repair */
+    }
+  }
+  return null;
+}
+
 export async function callLLM(
   system: string,
   user: string,
@@ -93,7 +111,8 @@ export async function callLLM(
   if (!hasApiKey() || budgetExhausted()) return null;
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 25000);
+  // reasoning models regularly think past 25s — give the call real room
+  const timer = setTimeout(() => controller.abort(), 50000);
   try {
     const res = await fetch(`${BASE_URL}/chat/completions`, {
       method: "POST",
@@ -139,10 +158,16 @@ export async function callLLM(
       console.warn(`[brain] no JSON in reply (finish: ${choice?.finish_reason ?? "?"})`);
       return null;
     }
-    const parsed = CognitionSchema.safeParse(JSON.parse(match[0]));
+    const json = parseCognitionJson(match[0]);
+    if (json == null) {
+      console.warn("[brain] unparseable JSON in reply");
+      return null;
+    }
+    const parsed = CognitionSchema.safeParse(json);
     if (!parsed.success) console.warn("[brain] cognition failed validation");
     return parsed.success ? parsed.data : null;
-  } catch {
+  } catch (e) {
+    console.warn(`[brain] llm call failed: ${String(e).slice(0, 100)}`);
     return null;
   } finally {
     clearTimeout(timer);

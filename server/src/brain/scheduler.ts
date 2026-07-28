@@ -126,7 +126,8 @@ async function cognize() {
   if (mind.depth > 0) advanceDreamTime(); // the dream-clock devours it
   const obs = buildObservation();
   let cognition = null;
-  if (effectiveMode() === "live") {
+  const live = effectiveMode() === "live";
+  if (live) {
     liveCalls += 1;
     const system =
       obs.depth > 0
@@ -138,7 +139,15 @@ async function cognize() {
           });
     const user = obs.depth > 0 ? renderFragmentObservation(obs) : renderObservation(obs);
     cognition = await callLLM(system, user, obs.depth > 0 ? FRAGMENT_MODEL : MIND_MODEL);
-    if (!cognition) liveFailures += 1;
+    if (!cognition) {
+      // a live mind that misfires stays SILENT — a beat of dark between
+      // thoughts is in-fiction; a canned line in the live voice is poison.
+      // (One-shot contexts were consumed by buildObservation and are lost
+      // with the beat — the mind simply didn't catch that flicker.)
+      liveFailures += 1;
+      console.warn(`[brain] live cognition lost (${liveFailures} so far) — staying silent`);
+      return;
+    }
   }
   if (!cognition) cognition = mockCognition(obs);
 
