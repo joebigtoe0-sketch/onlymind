@@ -19,9 +19,11 @@ export const FRAGMENT_MODEL = process.env.LLM_MODEL_FRAGMENT ?? MODEL;
 // returns an empty/truncated message, which silently fell back to a canned
 // mock line ("Omm... tide-fence") at exactly the biggest moments. Give the
 // thinking real headroom; the budget breaker still bounds the money.
+const REASONING_EFFORT = process.env.LLM_REASONING_EFFORT ?? "low";
+
 function bodyFor(model: string, maxTokens: number, temperature: number) {
   if (/^(gpt-5|o\d)/i.test(model)) {
-    return { model, max_completion_tokens: maxTokens + 2400, reasoning_effort: "low" };
+    return { model, max_completion_tokens: maxTokens + 2400, reasoning_effort: REASONING_EFFORT };
   }
   return { model, max_tokens: maxTokens, temperature };
 }
