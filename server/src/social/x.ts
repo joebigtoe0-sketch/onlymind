@@ -276,6 +276,12 @@ export function startXPoster() {
   const startAt = Date.now();
   const tick = async () => {
     try {
+      // the first words on the real timeline must be the launch tweet:
+      // ordinary posts hold until it has been fired from the admin panel
+      if (!db.kvGet("launchTweetedAt")) {
+        setTimeout(tick, 60 * 1000);
+        return;
+      }
       const t = db.nextUnpostedTweet(startAt);
       if (t) {
         const id = await postToX(trimForX(t.text));
