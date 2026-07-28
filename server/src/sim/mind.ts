@@ -351,7 +351,7 @@ export function advanceDreamTime(): void {
     d.age += d.spanYears;
     if (d.lifespan != null && d.age >= d.lifespan) d.lastSpan = true;
   }
-  if (d.steps > 14) d.lastSpan = true; // no dream is endless — home calls
+  if (d.steps > 9) d.lastSpan = true; // few chapters, each carrying real weight
 }
 
 export function dreamPushDeeper(): boolean {

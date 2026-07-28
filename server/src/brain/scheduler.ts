@@ -89,18 +89,20 @@ function effectiveMode(): "mock" | "live" {
 
 function nextDelayMs(): number {
   if (lastAction === "doubt") return 5000; // the doubt reflex (§6)
-  if (mind.reflection) return 12000 + Math.random() * 5000; // the reckoning is heavy
-  if (mind.depth > 0) return 5500 + Math.random() * 3000; // the trip is vivid AND quick
+  if (mind.reflection) return 18000 + Math.random() * 9000; // the reckoning is heavy
+  if (mind.depth > 0) return 12000 + Math.random() * 6000; // each chapter breathes
   if (mind.companion && mind.companion.goneAt == null) {
     return 9000 + Math.random() * 4000; // a conversation has its own pace
   }
   const phase = sim.focus.phase;
   if (phase === "capture" || phase === "infall" || phase === "absorbed") {
-    return 8000 + Math.random() * 5000;
+    return 10000 + Math.random() * 6000;
   }
   const watchers = watcherCount();
-  if (watchers > 0) return 14000 + Math.random() * 9000;
-  return 45000 + Math.random() * 30000; // unwatched: a murmur
+  // fewer, heavier stones: a thought worth reading every ~minute beats
+  // filler every twenty seconds
+  if (watchers > 0) return 40000 + Math.random() * 30000;
+  return 60000 + Math.random() * 40000; // unwatched: a murmur
 }
 
 export function startScheduler(initialDelayMs: number) {
@@ -136,6 +138,7 @@ async function cognize() {
             register: currentSeason().register,
             phase: obs.phase,
             awakening: obs.awakeningLevel,
+            anchors: (await import("../voice/curator")).voiceAnchors(),
           });
     const user = obs.depth > 0 ? renderFragmentObservation(obs) : renderObservation(obs);
     cognition = await callLLM(system, user, obs.depth > 0 ? FRAGMENT_MODEL : MIND_MODEL);
@@ -378,5 +381,7 @@ function buildObservation(): Observation {
     fellThrough,
     episodes: quiet && Math.random() < 0.22 ? db.sampleEpisodeMemories(2) : [],
     whisper: whisper?.text ?? null,
+    // the run of its own recent surface voice: momentum for the register
+    selfContext: atSurface ? db.lastThoughtsAtDepth(0, 0, 24).map((t) => t.text) : [],
   };
 }

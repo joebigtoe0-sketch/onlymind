@@ -128,7 +128,8 @@ export async function callLLM(
         authorization: `Bearer ${API_KEY}`,
       },
       body: JSON.stringify({
-        ...bodyFor(model, 600, 0.9),
+        // full temperature: the voice should live at the edge of its range
+        ...bodyFor(model, 700, 1.0),
         messages: [
           { role: "system", content: system },
           { role: "user", content: user },

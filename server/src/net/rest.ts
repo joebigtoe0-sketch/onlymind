@@ -213,9 +213,9 @@ adminRouter.post("/transmit", (req, res) => {
 
 adminRouter.post("/tweet", async (_req, res) => {
   const { composeTweetNow } = await import("../voice/tweets");
-  const t = composeTweetNow();
+  const t = await composeTweetNow();
   if (!t) {
-    res.status(400).json({ error: "nothing waiting to be said" });
+    res.status(400).json({ error: "nothing strong enough to be said" });
     return;
   }
   res.json({ ok: true, ...t });

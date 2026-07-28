@@ -53,28 +53,41 @@ function prio(kind: string | null): number {
   return PRIORITY[kind ?? "ambient"] ?? 10;
 }
 
-export function composeTweetNow(): { text: string; sourceKind: string | null } | null {
+export async function composeTweetNow(): Promise<{ text: string; sourceKind: string | null } | null> {
+  const { scoreLine, tweetWorthy, maybeKeepAnchor } = await import("./curator");
   const pool = db.untweetedTransmissions(50);
   if (pool.length === 0) return null;
   pool.sort((a, b) => prio(a.eventKind) - prio(b.eventKind) || b.at - a.at);
-  const chosen = pool[0];
-  const text = chosen.text; // as long as it is — no character limits
-  db.insertTweet(text, Date.now(), chosen.eventKind);
-  db.markTweeted(chosen.id);
-  kvSet("lastTweetAt", String(Date.now()));
-  return { text, sourceKind: chosen.eventKind };
+
+  // the curator gates the public voice: judge up to three candidates, post
+  // the first strong one; weak lines are consumed silently (they remain in
+  // the SIGNALS archive, they just never speak for it in public).
+  // Whisper replies bypass the gate — a conversation answers, always.
+  for (const chosen of pool.slice(0, 3)) {
+    const isReply = chosen.eventKind === "whisper";
+    const score = isReply ? null : await scoreLine(chosen.text);
+    maybeKeepAnchor(chosen.text, score);
+    db.markTweeted(chosen.id);
+    if (isReply || tweetWorthy(score)) {
+      const text = chosen.text; // as long as it is — no character limits
+      db.insertTweet(text, Date.now(), chosen.eventKind);
+      kvSet("lastTweetAt", String(Date.now()));
+      return { text, sourceKind: chosen.eventKind };
+    }
+  }
+  return null;
 }
 
 export function startTweetComposer() {
   let nextJitter = Math.random(); // varies each gap so the rhythm feels alive
-  const tick = () => {
+  const tick = async () => {
     const last = Number(kvGet("lastTweetAt") ?? 0);
     const pool = db.untweetedTransmissions(50);
     if (pool.length > 0) {
       const heavyWaiting = pool.some((t) => HEAVY.has(t.eventKind ?? ""));
       const gapMin = (heavyWaiting ? FAST_MIN : GAP_MIN) * (0.7 + nextJitter * 0.8);
       if (Date.now() - last > gapMin * 60 * 1000) {
-        composeTweetNow();
+        await composeTweetNow().catch(() => {});
         nextJitter = Math.random();
       }
     }
