@@ -61,7 +61,11 @@ export function startSignalStatic() {
 // the ambient drip: a handful per hour, the mind murmuring outward
 export function startAmbientDrip() {
   const loop = () => {
-    const recent = db.lastThoughts(24);
+    // only the mind's own surface voice leaks outward — never dweller
+    // murmurs, never dream chapters (those aren't cast at anyone)
+    const recent = db
+      .lastThoughts(24)
+      .filter((t) => (t.depth ?? 0) === 0 && (t.voice ?? "self") === "self");
     if (recent.length) {
       const pick = recent[Math.floor(Math.random() * recent.length)];
       queueTransmission(pick.text, "ambient");

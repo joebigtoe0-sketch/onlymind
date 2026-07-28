@@ -53,6 +53,12 @@ function prio(kind: string | null): number {
   return PRIORITY[kind ?? "ambient"] ?? 10;
 }
 
+function postIt(text: string, sourceKind: string | null): { text: string; sourceKind: string | null } {
+  db.insertTweet(text, Date.now(), sourceKind);
+  kvSet("lastTweetAt", String(Date.now()));
+  return { text, sourceKind };
+}
+
 export async function composeTweetNow(): Promise<{ text: string; sourceKind: string | null } | null> {
   const { scoreLine, tweetWorthy, maybeKeepAnchor } = await import("./curator");
   const pool = db.untweetedTransmissions(50);
@@ -63,17 +69,24 @@ export async function composeTweetNow(): Promise<{ text: string; sourceKind: str
   // the first strong one; weak lines are consumed silently (they remain in
   // the SIGNALS archive, they just never speak for it in public).
   // Whisper replies bypass the gate — a conversation answers, always.
+  let best: { text: string; kind: string | null; score: number } | null = null;
   for (const chosen of pool.slice(0, 3)) {
     const isReply = chosen.eventKind === "whisper";
     const score = isReply ? null : await scoreLine(chosen.text);
     maybeKeepAnchor(chosen.text, score);
     db.markTweeted(chosen.id);
-    if (isReply || tweetWorthy(score)) {
-      const text = chosen.text; // as long as it is — no character limits
-      db.insertTweet(text, Date.now(), chosen.eventKind);
-      kvSet("lastTweetAt", String(Date.now()));
-      return { text, sourceKind: chosen.eventKind };
+    if (isReply || tweetWorthy(score)) return postIt(chosen.text, chosen.eventKind);
+    if (score != null && (best == null || score > best.score)) {
+      best = { text: chosen.text, kind: chosen.eventKind, score };
     }
+  }
+
+  // the account must not starve: if the gate has passed nothing for 2h+,
+  // the least-weak line goes out anyway — a quiet-day voice, not silence
+  const last = Number(kvGet("lastTweetAt") ?? 0);
+  if (best && Date.now() - last > 2 * 60 * 60 * 1000) {
+    console.log(`[tweets] starving — posting best-of (score ${best.score})`);
+    return postIt(best.text, best.kind);
   }
   return null;
 }
@@ -81,12 +94,21 @@ export async function composeTweetNow(): Promise<{ text: string; sourceKind: str
 export function startTweetComposer() {
   let nextJitter = Math.random(); // varies each gap so the rhythm feels alive
   const tick = async () => {
-    const last = Number(kvGet("lastTweetAt") ?? 0);
+    let last = Number(kvGet("lastTweetAt") ?? 0);
+    if (!last) {
+      // fresh universe: pretend the last tweet was 90 min ago, so the first
+      // real one comes reasonably soon and the starving valve arms itself
+      last = Date.now() - 90 * 60 * 1000;
+      kvSet("lastTweetAt", String(last));
+    }
+    const lastTry = Number(kvGet("lastTweetTryAt") ?? 0);
     const pool = db.untweetedTransmissions(50);
-    if (pool.length > 0) {
+    // judging costs money and burns candidates — attempt at most every 7 min
+    if (pool.length > 0 && Date.now() - lastTry > 7 * 60 * 1000) {
       const heavyWaiting = pool.some((t) => HEAVY.has(t.eventKind ?? ""));
       const gapMin = (heavyWaiting ? FAST_MIN : GAP_MIN) * (0.7 + nextJitter * 0.8);
       if (Date.now() - last > gapMin * 60 * 1000) {
+        kvSet("lastTweetTryAt", String(Date.now()));
         await composeTweetNow().catch(() => {});
         nextJitter = Math.random();
       }
