@@ -320,6 +320,7 @@ function buildObservation(): Observation {
             age: mind.dream.age,
             lastSpan: mind.dream.lastSpan,
             koan: mind.dream.koan,
+            steps: mind.dream.steps,
             pushDeeper: dreamPushDeeper(),
           }
         : null,

@@ -35,6 +35,7 @@ export type Observation = {
     age: number | null;
     lastSpan: boolean;
     koan: string;
+    steps: number;
     pushDeeper: boolean;
   } | null;
   justCollapsed: {
@@ -577,7 +578,9 @@ function spanText(years: number): string {
 export function renderFragmentObservation(obs: Observation): string {
   const lines: string[] = [];
 
-  lines.push(`The shape of your world: "${obs.activeWorldThought ?? "hills, weather, a horizon"}".`);
+  lines.push(
+    `The shape of your world, its founding memory (background only — NEVER restate or riff on this wording): "${obs.activeWorldThought ?? "hills, weather, a horizon"}".`,
+  );
   if (obs.activeWorldId) {
     lines.push(
       `The stuff of this world, for backdrop only (never the subject, never re-described): ${pickStuff(obs.activeWorldId, obs.activeWorldArchetype).join("; ")}.`,
@@ -603,11 +606,22 @@ export function renderFragmentObservation(obs: Observation): string {
       lines.push("Tell what these ages held: what rose, what wore away, what learned to live and what forgot to.");
     }
     if (!obs.dream.lastSpan) {
-      // the turn of fate: fresh story-material every chapter
-      lines.push(
-        `Among everything these years held, this happened: ${TURNS[Math.floor(Math.random() * TURNS.length)]}. Build the chapter around it — what it changed, who it cost, what it left behind. Do not return to describing the ground.`,
-      );
+      // a new event only every third chapter — the rest is CONSEQUENCES.
+      // (constant fresh events made a soap opera on fast-forward: things
+      // kept arriving and nothing ever mattered twice)
+      if (obs.dream.steps % 3 === 1) {
+        lines.push(
+          `Among everything these years held, this happened: ${TURNS[Math.floor(Math.random() * TURNS.length)]}. Transmute it — a name, a face, a place, YOUR words — and build the chapter around it: what it changed, who it cost, what it left behind.`,
+        );
+      } else {
+        lines.push(
+          "Nothing new arrives this span. This chapter is CONSEQUENCES: take what your recent chapters already set in motion and move it forward — the aftermath, the next move, the cost coming due. Deepen what exists; add nothing.",
+        );
+      }
     }
+    lines.push(
+      "Continuity is the law of a life: your chapter must pick up at least one concrete thing from your recent chapters — a person by name, an object, an unfinished situation — and carry it further. A chapter connected to nothing is a failed chapter.",
+    );
     lines.push(
       `Underneath the work and the weather there is a wondering you keep coming back to — at night, after losses, at the edges of things. Its shape (find your OWN words for it; never these): ${obs.dream.koan} Let the chapter's events press on it. Sometimes the wondering wins, sometimes the chores do. You never answer it; you only get closer or further.`,
     );

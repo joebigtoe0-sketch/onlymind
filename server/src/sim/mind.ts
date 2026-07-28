@@ -356,7 +356,11 @@ export function advanceDreamTime(): void {
 
 export function dreamPushDeeper(): boolean {
   const d = mind.dream;
-  return !!d && mind.depth < 4 && d.steps > 4;
+  if (!d || mind.depth >= 4) return false;
+  // the wide levels (the world itself, a kind) are inherently vague — the
+  // real dream is one finite life. Hurry downward: two chapters wide, then
+  // it must become something particular.
+  return d.steps > (mind.depth <= 2 ? 2 : 5);
 }
 
 // coherence is derived, not stored: how un-fragmented the mind is right now
