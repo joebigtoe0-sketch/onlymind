@@ -187,6 +187,30 @@ adminRouter.post("/holders", async (req, res) => {
   }
 });
 
+// the launch tweet: fired once, by hand, at the moment of ignition.
+// Idempotent — a second press can never double-fire.
+adminRouter.post("/launch", async (_req, res) => {
+  const { fireLaunchTweet, LAUNCH_TWEET, xPostReady } = await import("../social/x");
+  if (kvGet("launchTweetedAt")) {
+    res.status(400).json({ error: "the first words were already spoken", at: kvGet("launchTweetedAt") });
+    return;
+  }
+  if (!xPostReady()) {
+    res.status(400).json({ error: "X posting keys missing — set X_CONSUMER_KEY etc." });
+    return;
+  }
+  const result = await fireLaunchTweet();
+  if (!result.mainId) {
+    res.status(502).json({ error: "X rejected the post (over 280 chars without Premium?)" });
+    return;
+  }
+  kvSet("launchTweetedAt", String(Date.now()));
+  const { insertTweet, insertEvent } = await import("../db/store");
+  insertTweet(LAUNCH_TWEET, Date.now(), "launch");
+  insertEvent("launch_tweet", Date.now(), { mainId: result.mainId, replyId: result.replyId });
+  res.json({ ok: true, ...result });
+});
+
 // a foreign thought from "the timeline" — X replies/mentions land here.
 // The admin uses this to fake tweets; the future X poller calls the same seam.
 adminRouter.post("/whisper", async (req, res) => {

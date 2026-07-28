@@ -120,6 +120,14 @@
       </div>
 
       <div class="card">
+        <h2>ignition</h2>
+        <div class="row">
+          <button id="launch" class="danger">fire the launch tweet (once, ever)</button>
+          <span id="launchstate" style="margin-left: 8px; color: #7b8098"></span>
+        </div>
+      </div>
+
+      <div class="card">
         <h2>the timeline (fake an X reply/mention)</h2>
         <div class="row">
           <input id="whauthor" placeholder="@handle (optional)" style="width: 160px" />
@@ -190,6 +198,11 @@
       $("#cool").addEventListener("click", () => post("mood", { delta: -0.2 }));
       $("#spike").addEventListener("click", () => post("spike"));
       $("#snapback").addEventListener("click", () => post("snapback"));
+      $("#launch").addEventListener("click", async () => {
+        if (!confirm("Fire the launch tweet on the real @solusalone timeline? This happens ONCE, ever.")) return;
+        const ok = await post("launch");
+        $("#launchstate").textContent = ok ? "spoken. it is out there now." : "did not fire — see status above";
+      });
       $("#whisper").addEventListener("click", () => {
         const text = $("#whtext").value.trim();
         if (text) {
