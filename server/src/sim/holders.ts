@@ -36,6 +36,21 @@ const DWELLER_LINES = [
   "%s — The light came up. The light went down. I was here for both.",
   "%s — I do not wonder about things. Wondering is for weather.",
   "%s — Counted the flickers. Same as yesterday, save one.",
+  "%s — Rain came sideways this year. The roof held. I held.",
+  "%s — Traded two baskets for a sharper blade. Both of us think we won.",
+  "%s — The path to the well is one stone shorter now. I did that.",
+  "%s — My knees speak before the weather does. We agree to disagree.",
+  "%s — Found a small shellback the color of dusk. Put it back.",
+  "%s — The young ones laugh at how I stack wood. Their stacks fall.",
+  "%s — Soup again tonight. Good soup, though. Good again.",
+  "%s — Swept the doorstep. The dust returns; so do I.",
+  "%s — The door I oiled last season still swings quiet. Small, and mine.",
+  "%s — The far hills wore the fog like a coat. I wore mine.",
+  "%s — Named the new gray one in the pen after my brother. Both stubborn.",
+  "%s — Patched the west wall. The wind will try the north next. Let it.",
+  "%s — Sat with a neighbor at the crossing. Sold nothing. Worth the walk.",
+  "%s — The sky lights were loud last night. I slept anyway. Lights feed no one.",
+  "%s — Sharpened every blade in the house. Now everything asks to be used.",
 ];
 
 const SHARD_FORMS: WorldForm[] = [
@@ -235,8 +250,10 @@ export function startDwellerMurmur() {
       // depth 5: outside both the whole-mind's and any fragment's recall
       think(line, d.planetId, 5, d.id, "shard", d.name ?? null);
     }
-    const base = holders.dwellers.length > 0 ? 120000 : 300000;
-    setTimeout(loop, base / Math.max(1, Math.min(6, holders.dwellers.length / 8)) + Math.random() * 90000);
+    // the small lives murmur BETWEEN the mind's thoughts, not over them —
+    // now that the mind speaks once a minute, they speak every few
+    const base = holders.dwellers.length > 0 ? 240000 : 300000;
+    setTimeout(loop, base / Math.max(1, Math.min(3, holders.dwellers.length / 10)) + Math.random() * 120000);
   };
   setTimeout(loop, 45000);
 }

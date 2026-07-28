@@ -38,7 +38,13 @@ export async function generateMeditation(): Promise<string | null> {
     MIND_MODEL,
   );
 
-  if (!text) text = CANNED[Math.floor(Math.random() * CANNED.length)];
+  if (!text) {
+    // a failed live call stays silent — canned text only ever plays when
+    // there is no brain at all (mock mode). Same law as the cognitions.
+    const { hasApiKey } = await import("../brain/adapter");
+    if (hasApiKey()) return null;
+    text = CANNED[Math.floor(Math.random() * CANNED.length)];
+  }
   text = text.trim().slice(0, 2500);
 
   think(text, null);
