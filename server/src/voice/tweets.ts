@@ -2,10 +2,10 @@ import * as db from "../db/store";
 import { kvGet, kvSet } from "../db/store";
 import { sim } from "../sim/cosmos";
 
-// the young-account floor: for the first 24h the voice must not go quiet —
-// at least ~2 tweets an hour, launch excitement kept fed
+// the young-account floor: for the first 2h the voice must not go quiet —
+// at least ~2 tweets an hour while launch is hottest, natural pacing after
 function youngAccount(): boolean {
-  return sim.ignitionAt != null && Date.now() - sim.ignitionAt < 24 * 60 * 60 * 1000;
+  return sim.ignitionAt != null && Date.now() - sim.ignitionAt < 2 * 60 * 60 * 1000;
 }
 
 // The tweet composer (§11): sits on the transmissions queue and, on the
