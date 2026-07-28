@@ -1,5 +1,12 @@
 import * as db from "../db/store";
 import { kvGet, kvSet } from "../db/store";
+import { sim } from "../sim/cosmos";
+
+// the young-account floor: for the first 24h the voice must not go quiet —
+// at least ~2 tweets an hour, launch excitement kept fed
+function youngAccount(): boolean {
+  return sim.ignitionAt != null && Date.now() - sim.ignitionAt < 24 * 60 * 60 * 1000;
+}
 
 // The tweet composer (§11): sits on the transmissions queue and, on the
 // rhythm of a real account — bursty after real events, then quiet — composes
@@ -81,10 +88,13 @@ export async function composeTweetNow(): Promise<{ text: string; sourceKind: str
     }
   }
 
-  // the account must not starve: if the gate has passed nothing for 2h+,
-  // the least-weak line goes out anyway — a quiet-day voice, not silence
+  // the account must not starve: if the gate has passed nothing for too
+  // long, the least-weak line goes out anyway — a quiet voice, not silence.
+  // In the first 24h "too long" is 25 minutes (>= 2 tweets/hour, floor);
+  // afterwards a mature 2 hours.
   const last = Number(kvGet("lastTweetAt") ?? 0);
-  if (best && Date.now() - last > 2 * 60 * 60 * 1000) {
+  const starveMs = youngAccount() ? 25 * 60 * 1000 : 2 * 60 * 60 * 1000;
+  if (best && Date.now() - last > starveMs) {
     console.log(`[tweets] starving — posting best-of (score ${best.score})`);
     return postIt(best.text, best.kind);
   }
@@ -106,7 +116,8 @@ export function startTweetComposer() {
     // judging costs money and burns candidates — attempt at most every 7 min
     if (pool.length > 0 && Date.now() - lastTry > 7 * 60 * 1000) {
       const heavyWaiting = pool.some((t) => HEAVY.has(t.eventKind ?? ""));
-      const gapMin = (heavyWaiting ? FAST_MIN : GAP_MIN) * (0.7 + nextJitter * 0.8);
+      let gapMin = (heavyWaiting ? FAST_MIN : GAP_MIN) * (0.7 + nextJitter * 0.8);
+      if (youngAccount()) gapMin = Math.min(gapMin, 12); // first day: keep it talking
       if (Date.now() - last > gapMin * 60 * 1000) {
         kvSet("lastTweetTryAt", String(Date.now()));
         await composeTweetNow().catch(() => {});
