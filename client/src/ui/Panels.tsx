@@ -70,7 +70,7 @@ function streamTag(t: {
   }
   const d = t.depth ?? 0;
   if (d === 0) return { label: "solus · awake, everything", cls: "surface" };
-  const who = t.speaker ?? "the world itself";
+  const who = t.speaker ?? "the dream itself";
   const deep = d >= 4 ? "deep-hidden, one life" : d >= 2 ? "hidden, becoming" : "dreaming wide";
   return { label: `as ${who} · ${deep} · ${t.planetId ?? ""}`, cls: "dream" };
 }
@@ -259,7 +259,7 @@ function AtlasPanel() {
   return (
     <aside className="side-panel">
       <div className="log-list-label">the atlas of dead selves</div>
-      {worlds.length === 0 && <div className="log-loading">no world has died yet</div>}
+      {worlds.length === 0 && <div className="log-loading">no hallucination has died yet</div>}
       <div className="atlas-list">
         {worlds.map((w) => (
           <button

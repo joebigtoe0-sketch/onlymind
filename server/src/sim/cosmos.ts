@@ -105,7 +105,7 @@ export function makePlanet(
     // a small sun, a pale moon, weather given a body
     const siblings = sim.planets.filter((p) => p.parentId === parentId).length;
     return {
-      id: `w${i}`,
+      id: `h${i}`,
       bornAt: Date.now(),
       birthThought,
       parentId,
@@ -125,7 +125,7 @@ export function makePlanet(
   // outward with age (client computes the expansion deterministically) —
   // new thoughts bloom inside, old ones are pushed ever further out
   return {
-    id: `w${i}`,
+    id: `h${i}`,
     bornAt: Date.now(),
     birthThought,
     parentId: null,

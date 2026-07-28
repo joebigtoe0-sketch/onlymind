@@ -198,12 +198,8 @@ export function Focus() {
     mindLightPos.copy(pos.current);
     if (!anchorId) followAnchor.copy(pos.current);
 
-    // while auto-following, the panel shows the world the mind is at:
-    // arriving opens its log; leaving hands the panel back to the stream
-    const st = useCosmos.getState();
-    if (!replay && st.followMind && st.selectedPlanetId !== anchorId) {
-      st.select(anchorId);
-    }
+    // while auto-following, the stream stays open — the camera goes where
+    // the mind goes, but the reading never gets swapped out from under you
 
     // heat the inhabited world (read by Planet each frame)
     if (!replay) {

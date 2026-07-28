@@ -43,7 +43,7 @@ export function PlanetLog() {
         ×
       </button>
       <div className="log-eyebrow" style={{ color: tint }}>
-        held thought · {selectedPlanetId}
+        hallucination · {selectedPlanetId}
       </div>
       {planet ? (
         <>
@@ -86,7 +86,7 @@ export function PlanetLog() {
               <ol className="log-lineage">
                 {log.fragments.map((f) => (
                   <li key={f.id} style={{ paddingLeft: `${(f.depth - 1) * 14}px` }}>
-                    {f.name ?? "the world itself"}
+                    {f.name ?? "the dream itself"}
                   </li>
                 ))}
               </ol>

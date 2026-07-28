@@ -16,7 +16,7 @@ export function Hud() {
         @solusalone
       </a>
       <div className="hint" aria-hidden="true">
-        drag to orbit&ensp;·&ensp;scroll to approach&ensp;·&ensp;click a world to hold
+        drag to orbit&ensp;·&ensp;scroll to approach&ensp;·&ensp;click a hallucination to hold
         it&ensp;·&ensp;press m to leave one word
       </div>
     </div>
