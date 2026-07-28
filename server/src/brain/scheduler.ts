@@ -18,6 +18,7 @@ import {
   callLLM,
   FRAGMENT_MODEL,
   hasApiKey,
+  lastBrainError,
   MIND_MODEL,
   spendToday,
 } from "./adapter";
@@ -59,6 +60,7 @@ let inFlight = false;
 let cognitions = 0;
 let liveCalls = 0;
 let liveFailures = 0;
+let consecutiveFailures = 0;
 let lastAction = "";
 const recentActions: string[] = [];
 
@@ -69,6 +71,8 @@ export function brainStatus() {
     cognitions,
     liveCalls,
     liveFailures,
+    consecutiveFailures,
+    lastError: lastBrainError(),
     depth: mind.depth,
     spendTodayUsd: Math.round(spendToday() * 10000) / 10000,
   };
@@ -88,6 +92,11 @@ function effectiveMode(): "mock" | "live" {
 }
 
 function nextDelayMs(): number {
+  // a failed beat retries fast: silence should cost seconds, not a minute.
+  // Backs off slightly as failures stack so an outage doesn't hammer.
+  if (consecutiveFailures > 0) {
+    return Math.min(30000, 8000 + consecutiveFailures * 4000) + Math.random() * 5000;
+  }
   if (lastAction === "doubt") return 5000; // the doubt reflex (§6)
   if (mind.reflection) return 18000 + Math.random() * 9000; // the reckoning is heavy
   if (mind.depth > 0) return 12000 + Math.random() * 6000; // each chapter breathes
@@ -148,9 +157,11 @@ async function cognize() {
       // (One-shot contexts were consumed by buildObservation and are lost
       // with the beat — the mind simply didn't catch that flicker.)
       liveFailures += 1;
-      console.warn(`[brain] live cognition lost (${liveFailures} so far) — staying silent`);
+      consecutiveFailures += 1;
+      console.warn(`[brain] live cognition lost (${liveFailures} total, ${consecutiveFailures} in a row) — retrying soon`);
       return;
     }
+    consecutiveFailures = 0;
   }
   if (!cognition) cognition = mockCognition(obs);
 

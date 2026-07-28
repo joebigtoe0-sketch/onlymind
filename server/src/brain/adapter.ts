@@ -39,6 +39,18 @@ export function hasApiKey(): boolean {
   return API_KEY.length > 0;
 }
 
+// why the last call died — surfaced in /api/health so a quiet stream is
+// diagnosable without ssh-ing into the logs
+let lastCallError: { note: string; at: number } | null = null;
+function noteError(note: string) {
+  lastCallError = { note: note.slice(0, 200), at: Date.now() };
+}
+export function lastBrainError(): { note: string; agoSec: number } | null {
+  return lastCallError
+    ? { note: lastCallError.note, agoSec: Math.round((Date.now() - lastCallError.at) / 1000) }
+    : null;
+}
+
 function spendKey(): string {
   return `spend:${new Date().toISOString().slice(0, 10)}`;
 }
@@ -137,7 +149,9 @@ export async function callLLM(
       }),
     });
     if (!res.ok) {
-      console.warn(`[brain] llm http ${res.status}`);
+      const body = (await res.text().catch(() => "")).slice(0, 120);
+      noteError(`http ${res.status}: ${body}`);
+      console.warn(`[brain] llm http ${res.status}: ${body}`);
       return null;
     }
     const data = (await res.json()) as {
@@ -155,6 +169,7 @@ export async function callLLM(
     const content = choice?.message?.content;
     if (!content) {
       // a mock line is about to play instead of the real mind — say why
+      noteError(`empty reply (finish: ${choice?.finish_reason ?? "?"})`);
       console.warn(`[brain] empty reply (finish: ${choice?.finish_reason ?? "?"}, out: ${outTok} tok)`);
       return null;
     }
@@ -162,27 +177,32 @@ export async function callLLM(
     // tolerate fenced or prefixed JSON
     const match = content.match(/\{[\s\S]*\}/);
     if (!match) {
+      noteError("no JSON in reply");
       console.warn(`[brain] no JSON in reply (finish: ${choice?.finish_reason ?? "?"})`);
       return null;
     }
     const json = parseCognitionJson(match[0]);
     if (json == null) {
+      noteError("unparseable JSON");
       console.warn("[brain] unparseable JSON in reply");
       return null;
     }
     const parsed = CognitionSchema.safeParse(json);
     if (!parsed.success) {
+      noteError("failed schema validation");
       console.warn("[brain] cognition failed validation");
       return null;
     }
     // model refusals must never enter the stream as thoughts — the whole
     // point is that these ARE its private thoughts
     if (/\b(I (cannot|can't|am unable to|won't be able to) (share|provide|assist|help|generate)|as an AI\b|I'?m sorry, (but )?I)/i.test(parsed.data.thought)) {
+      noteError("model refused in character");
       console.warn("[brain] model refused in character — dropping to silence");
       return null;
     }
     return parsed.data;
   } catch (e) {
+    noteError(`call failed: ${String(e).slice(0, 100)}`);
     console.warn(`[brain] llm call failed: ${String(e).slice(0, 100)}`);
     return null;
   } finally {
