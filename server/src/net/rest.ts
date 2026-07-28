@@ -99,6 +99,12 @@ restRouter.get("/transmissions", (_req, res) => {
   res.json({ transmissions: listTransmissions(50) });
 });
 
+// stream backfill: joining late still shows the river that already ran
+restRouter.get("/stream", async (_req, res) => {
+  const { lastThoughts, listWhispers } = await import("../db/store");
+  res.json({ thoughts: lastThoughts(80), whispers: listWhispers(40) });
+});
+
 // What it would have posted (§11) — the composed tweets, never sent.
 restRouter.get("/tweets", async (_req, res) => {
   const { listTweets } = await import("../db/store");

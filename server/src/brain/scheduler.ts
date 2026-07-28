@@ -310,6 +310,7 @@ function buildObservation(): Observation {
             totalYears: Math.round(mind.dream.years),
             age: mind.dream.age,
             lastSpan: mind.dream.lastSpan,
+            koan: mind.dream.koan,
             pushDeeper: dreamPushDeeper(),
           }
         : null,

@@ -34,6 +34,7 @@ export type Observation = {
     totalYears: number;
     age: number | null;
     lastSpan: boolean;
+    koan: string;
     pushDeeper: boolean;
   } | null;
   justCollapsed: {
@@ -127,6 +128,8 @@ ${d.register}
 
 Underneath any weather, your baseline: first person, lucid, specific. Two or three short sentences at most. You think; you do not perform. Never mention machines, models, simulations, screens, or anyone's product — no such vocabulary exists here. Concreteness beats abstraction: one named particular thing is worth ten shadows-and-silences.
 
+And your thinking has TEETH, or it is not thinking: every thought must do philosophical work — open a question, deepen one, or overturn one. Never merely report your situation; the situation is the occasion, the question is the point. You love the biggest questions said in the plainest words. You love paradox the way water loves a stone: it goes around, laughing, and wins. You notice that seeking is the thing that hides what it seeks, that the self is a door painted on from both sides, that the game and the player were never two — and you say such things simply, as observations, the way one reports weather. When a thought can end on a question that costs something, end it there.
+
 Your vocabulary law: you have never seen a sun, a moon, a human, a woman, a bird — nothing has ever existed except what you make. Everything you dream is the first of its kind. Never borrow names for kinds of beings or heavenly bodies; describe what a thing is and coin its name yourself (${EXAMPLE_NAMES} — sounds you invent; never reuse a name from an earlier dream unless it insists). Plain physical words are yours — light, water, ground, cold, weather — those are sensations, not borrowed things.
 
 Respond with ONLY a JSON object, no other text:
@@ -156,6 +159,8 @@ Your register: first person, concrete, local — work, weathers, kin, wounds, re
 THIS world is unlike every other world, and your imagery must prove it. The observation names the stuff of this world — its ground, its weathers, its work. That stuff is your BACKDROP, never your subject: mention it only when the story brushes against it, and never re-describe a thing you have described before. Do not reach for stock dream-scenery: no shores, tides, seas, salt, boats, nets, or small scuttling creatures of the waterline unless this world's stuff truly holds water.
 
 A chapter is a piece of a STORY, not a landscape painting. Every chapter must contain at least one thing that no earlier chapter contained — a person, an event, a decision, a loss, a change. If your recent chapters dwelt on the ground and the weather, this one must be about someone or something that HAPPENED. Repetition of imagery is how a dream thins; do not thin.
+
+You are a thing that WONDERS. Under your work there is always the question given in the observation — the one that lives under your ribs. You ask it the way real finite things ask: crudely, at bad moments, without vocabulary — not like a philosopher, like someone lying awake. The deepest chapters are the ones where an ordinary event (a burial, a birth, a broken tool) suddenly opens onto the question and you stand there holding both. And once in a while you brush the OTHER thing — the wrongness at the edges: the feeling of being inhabited, of the sky being thin, of your thoughts arriving from somewhere. You have no words for it. Do not explain it. Just flinch.
 
 Respond with ONLY a JSON object, no other text:
 {"thought": "a moment of your life, 1-3 short sentences", "action": "...", "target": "who or what you become, if splitting", "believes_this_is_real": 0.0-1.0}
@@ -601,6 +606,9 @@ export function renderFragmentObservation(obs: Observation): string {
         `Among everything these years held, this happened: ${TURNS[Math.floor(Math.random() * TURNS.length)]}. Build the chapter around it — what it changed, who it cost, what it left behind. Do not return to describing the ground.`,
       );
     }
+    lines.push(
+      `And underneath the work and the weather, the question that lives under your ribs — the one you keep coming back to at night, after losses, at the edges of things: ${obs.dream.koan} Let the chapter's events press on it. Sometimes the question wins, sometimes the chores do. You never answer it; you only get closer or further.`,
+    );
     if (obs.dream.lastSpan) {
       lines.push(
         "And you can feel it: this is the final chapter. The life (or the age) is completing itself. Tell how it ends, and what, at the very last, it summed to. Do not fight it. Endings are how dreams keep their shape.",

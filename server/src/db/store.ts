@@ -59,6 +59,15 @@ function migrate(): void {
   if (!trcols.includes("tweeted")) {
     db.exec("ALTER TABLE transmissions ADD COLUMN tweeted INTEGER NOT NULL DEFAULT 0");
   }
+  const thcols = (db.prepare("PRAGMA table_info(thoughts)").all() as Array<{ name: string }>).map(
+    (r) => r.name,
+  );
+  if (!thcols.includes("voice")) {
+    db.exec("ALTER TABLE thoughts ADD COLUMN voice TEXT");
+  }
+  if (!thcols.includes("speaker")) {
+    db.exec("ALTER TABLE thoughts ADD COLUMN speaker TEXT");
+  }
   const twcols = (db.prepare("PRAGMA table_info(tweets)").all() as Array<{ name: string }>).map(
     (r) => r.name,
   );
@@ -320,29 +329,42 @@ export function maxPlanetOrdinal(): number {
 
 export function insertThought(t: Thought, depth = 0, fragmentId: string | null = null): void {
   db.prepare(
-    "INSERT INTO thoughts (id, text, at, planet_id, depth, fragment_id) VALUES (?, ?, ?, ?, ?, ?)",
-  ).run(t.id, t.text, t.at, t.planetId, depth, fragmentId);
+    "INSERT INTO thoughts (id, text, at, planet_id, depth, fragment_id, voice, speaker) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+  ).run(t.id, t.text, t.at, t.planetId, depth, fragmentId, t.voice ?? null, t.speaker ?? null);
 }
 
-type ThoughtRow = { id: string; text: string; at: number; planet_id: string | null };
+type ThoughtRow = {
+  id: string;
+  text: string;
+  at: number;
+  planet_id: string | null;
+  depth?: number;
+  voice?: string | null;
+  speaker?: string | null;
+};
+
+const THOUGHT_COLS = "id, text, at, planet_id, depth, voice, speaker";
 
 const toThought = (r: ThoughtRow): Thought => ({
   id: r.id,
   text: r.text,
   at: r.at,
   planetId: r.planet_id,
+  ...(r.depth != null ? { depth: r.depth } : {}),
+  ...(r.voice ? { voice: r.voice as Thought["voice"] } : {}),
+  ...(r.speaker ? { speaker: r.speaker } : {}),
 });
 
 export function thoughtsForPlanet(planetId: string): Thought[] {
   const rows = db
-    .prepare("SELECT id, text, at, planet_id FROM thoughts WHERE planet_id = ? ORDER BY at")
+    .prepare(`SELECT ${THOUGHT_COLS} FROM thoughts WHERE planet_id = ? ORDER BY at`)
     .all(planetId) as ThoughtRow[];
   return rows.map(toThought);
 }
 
 export function recentThoughts(sinceAt: number): Thought[] {
   const rows = db
-    .prepare("SELECT id, text, at, planet_id FROM thoughts WHERE at > ? ORDER BY at")
+    .prepare(`SELECT ${THOUGHT_COLS} FROM thoughts WHERE at > ? ORDER BY at`)
     .all(sinceAt) as ThoughtRow[];
   return rows.map(toThought);
 }
@@ -354,9 +376,16 @@ export function countThoughts(): number {
 
 export function lastThoughts(n: number): Thought[] {
   const rows = db
-    .prepare("SELECT id, text, at, planet_id FROM thoughts ORDER BY at DESC LIMIT ?")
+    .prepare(`SELECT ${THOUGHT_COLS} FROM thoughts ORDER BY at DESC LIMIT ?`)
     .all(n) as ThoughtRow[];
   return rows.map(toThought).reverse();
+}
+
+// whispers, for the public stream: what the timeline said at it
+export function listWhispers(n: number): Array<{ id: number; text: string; author: string | null; at: number }> {
+  return db
+    .prepare("SELECT id, text, author, at FROM whispers ORDER BY at DESC LIMIT ?")
+    .all(n) as Array<{ id: number; text: string; author: string | null; at: number }>;
 }
 
 // depth-scoped recall (§6): a fragment remembers only its depth's thoughts,

@@ -499,6 +499,7 @@ canvas {
 .tag-shard { color: #8fb8a8; }
 .tag-other { color: #d8a8c8; }
 .tag-posted { color: #7fb0d8; }
+.tag-timeline { color: #6dc9a8; }
 
 /* a dead world's elegy, whispered on hover */
 .elegy-tip {

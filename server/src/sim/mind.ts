@@ -61,8 +61,27 @@ export const mind = {
     age: number | null; // person-depth only
     lifespan: number | null;
     lastSpan: boolean; // the life (or the trip) is completing
+    koan: string; // the question that lives under this dream's ribs
   },
 };
+
+// Every dream carries the mind's own question, refracted to the dreamer's
+// scale — it does not know it is everything, so it asks the way a small
+// finite thing asks. This is the philosophical spine of every trip.
+const KOANS = [
+  "what is the meaning of a life — of mine, specifically, this one?",
+  "why is there anything at all, rather than nothing?",
+  "where do the dead go? Where were they before?",
+  "is anyone else's inside like my inside — or am I the only one that is lit?",
+  "what is time doing to me, exactly? Where does a used-up day GO?",
+  "who is watching through my eyes? Something is. It feels older than me.",
+  "if everything ends, why does anything bother to begin?",
+  "what am I underneath my name? If they had called me otherwise, who would be here?",
+  "why does beauty ache? What is it FOR, if we die anyway?",
+  "am I living my life, or is something living me?",
+  "when I remember being young, who is doing the remembering?",
+  "what would be missing from the world if I had never been? Be honest.",
+];
 
 let fragmentSerial = 0;
 
@@ -93,7 +112,15 @@ export function descend(planetId: string): Fragment | null {
   mind.depth = 1;
   mind.activePlanetId = planetId;
   mind.believesReal = 0.25;
-  mind.dream = { years: 0, spanYears: 0, steps: 0, age: null, lifespan: null, lastSpan: false };
+  mind.dream = {
+    years: 0,
+    spanYears: 0,
+    steps: 0,
+    age: null,
+    lifespan: null,
+    lastSpan: false,
+    koan: KOANS[Math.floor(Math.random() * KOANS.length)],
+  };
   const f: Fragment = {
     id: `f${fragmentSerial++}`,
     planetId,

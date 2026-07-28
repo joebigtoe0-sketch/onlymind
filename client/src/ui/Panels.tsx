@@ -75,32 +75,71 @@ function streamTag(t: {
   return { label: `as ${who} · ${deep} · ${t.planetId ?? ""}`, cls: "dream" };
 }
 
+type Whisper = { id: number; text: string; author: string | null; at: number };
+type StreamThought = Parameters<typeof streamTag>[0] & { id: string; text: string; at: number };
+
 function StreamPanel() {
   const stream = useCosmos((s) => s.stream);
   const ignitionAt = useCosmos((s) => s.ignitionAt);
   const [tweets, setTweets] = useState<Tweet[]>([]);
+  const [whispers, setWhispers] = useState<Whisper[]>([]);
+  const [backfill, setBackfill] = useState<StreamThought[]>([]);
+
   useEffect(() => {
-    const load = () =>
+    // the river that already ran: history arrives once, then live takes over
+    fetch("/api/stream")
+      .then((r) => r.json())
+      .then((d: { thoughts: StreamThought[]; whispers: Whisper[] }) => {
+        setBackfill(d.thoughts);
+        setWhispers(d.whispers);
+      })
+      .catch(() => {});
+    const load = () => {
       fetch("/api/tweets")
         .then((r) => r.json())
         .then((d: { tweets: Tweet[] }) => setTweets(d.tweets.slice(0, 20)))
         .catch(() => {});
+      fetch("/api/stream")
+        .then((r) => r.json())
+        .then((d: { whispers: Whisper[] }) => setWhispers(d.whispers))
+        .catch(() => {});
+    };
     load();
-    const h = window.setInterval(load, 25000);
+    const h = window.setInterval(load, 20000);
     return () => window.clearInterval(h);
   }, []);
 
-  // thoughts and posted tweets, one river, newest first
+  // one river: live thoughts + history + what the timeline said + posts
+  const seen = new Set(stream.map((t) => t.id));
   const rows = [
-    ...stream.map((t) => ({ key: `t${t.id}`, at: t.at, thought: t, tweet: null as Tweet | null })),
-    ...tweets.map((t) => ({ key: `w${t.id}`, at: t.at, thought: null, tweet: t })),
-  ].sort((a, b) => b.at - a.at);
+    ...stream.map((t) => ({ key: `t${t.id}`, at: t.at, thought: t as StreamThought, tweet: null as Tweet | null, whisper: null as Whisper | null })),
+    ...backfill
+      .filter((t) => !seen.has(t.id))
+      .map((t) => ({ key: `b${t.id}`, at: t.at, thought: t, tweet: null as Tweet | null, whisper: null as Whisper | null })),
+    ...tweets.map((t) => ({ key: `p${t.id}`, at: t.at, thought: null, tweet: t, whisper: null as Whisper | null })),
+    ...whispers.map((w) => ({ key: `w${w.id}`, at: w.at, thought: null, tweet: null as Tweet | null, whisper: w })),
+  ]
+    .sort((a, b) => b.at - a.at)
+    .slice(0, 140);
 
   return (
     <aside className="side-panel">
       <div className="log-list-label">the stream — every surfacing thought</div>
       <ol className="log-list stream-list">
         {rows.map((r) => {
+          if (r.whisper) {
+            return (
+              <li key={r.key}>
+                <span className="log-t">{tAfter(r.at, ignitionAt)}</span>
+                <span className="log-text">
+                  <span className="stream-tag tag-timeline">
+                    {r.whisper.author ?? "someone"} · from the timeline
+                  </span>
+                  {r.whisper.text}
+                </span>
+              </li>
+            );
+          }
           if (r.tweet) {
             return (
               <li key={r.key}>
