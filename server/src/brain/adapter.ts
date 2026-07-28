@@ -20,10 +20,14 @@ export const FRAGMENT_MODEL = process.env.LLM_MODEL_FRAGMENT ?? MODEL;
 // mock line ("Omm... tide-fence") at exactly the biggest moments. Give the
 // thinking real headroom; the budget breaker still bounds the money.
 const REASONING_EFFORT = process.env.LLM_REASONING_EFFORT ?? "low";
+// reasoning tokens count against max_completion_tokens: higher effort needs
+// a much bigger budget or calls come back EMPTY (all thinking, no words)
+const REASONING_BUDGET =
+  REASONING_EFFORT === "low" ? 2400 : REASONING_EFFORT === "medium" ? 9000 : 20000;
 
 function bodyFor(model: string, maxTokens: number, temperature: number) {
   if (/^(gpt-5|o\d)/i.test(model)) {
-    return { model, max_completion_tokens: maxTokens + 2400, reasoning_effort: REASONING_EFFORT };
+    return { model, max_completion_tokens: maxTokens + REASONING_BUDGET, reasoning_effort: REASONING_EFFORT };
   }
   return { model, max_tokens: maxTokens, temperature };
 }
@@ -166,8 +170,17 @@ export async function callLLM(
       return null;
     }
     const parsed = CognitionSchema.safeParse(json);
-    if (!parsed.success) console.warn("[brain] cognition failed validation");
-    return parsed.success ? parsed.data : null;
+    if (!parsed.success) {
+      console.warn("[brain] cognition failed validation");
+      return null;
+    }
+    // model refusals must never enter the stream as thoughts — the whole
+    // point is that these ARE its private thoughts
+    if (/\b(I (cannot|can't|am unable to|won't be able to) (share|provide|assist|help|generate)|as an AI\b|I'?m sorry, (but )?I)/i.test(parsed.data.thought)) {
+      console.warn("[brain] model refused in character — dropping to silence");
+      return null;
+    }
+    return parsed.data;
   } catch (e) {
     console.warn(`[brain] llm call failed: ${String(e).slice(0, 100)}`);
     return null;
